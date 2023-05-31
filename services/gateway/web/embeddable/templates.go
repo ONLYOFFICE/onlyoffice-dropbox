@@ -20,8 +20,9 @@ var (
 	EditorPage = template.Must(template.ParseFS(
 		templateFiles, "templates/editor.html", "templates/spinner.html",
 	))
-	ErrorPage   = template.Must(template.ParseFS(templateFiles, "templates/error.html"))
-	ConvertPage = template.Must(template.ParseFS(
+	ErrorPage             = template.Must(template.ParseFS(templateFiles, "templates/error.html"))
+	InstallationErrorPage = template.Must(template.ParseFS(templateFiles, "templates/installation.html"))
+	ConvertPage           = template.Must(template.ParseFS(
 		templateFiles, "templates/convert.html", "templates/error.html", "templates/spinner.html",
 	))
 )

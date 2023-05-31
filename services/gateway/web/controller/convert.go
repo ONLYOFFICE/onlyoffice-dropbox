@@ -162,9 +162,9 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
-			csrf.TemplateTag: csrf.TemplateField(r),
-			"OOXML":          c.fileUtil.IsExtensionOOXMLConvertable(ext),
-			"LossEdit":       c.fileUtil.IsExtensionLossEditable(ext),
+			"CSRF":     csrf.Token(r),
+			"OOXML":    c.fileUtil.IsExtensionOOXMLConvertable(ext),
+			"LossEdit": c.fileUtil.IsExtensionLossEditable(ext),
 			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "openOnlyoffice",
 			}),
