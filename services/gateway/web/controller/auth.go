@@ -34,7 +34,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	cv "github.com/nirasan/go-oauth-pkce-code-verifier"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -118,6 +117,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 
 func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "text/html")
 		tctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
@@ -129,10 +129,16 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			return
 		}
 
+		errMsg := map[string]interface{}{
+			"errorMain":    "Installation Failed",
+			"errorSubtext": "Please try again or contact admin",
+			"closeButton":  "Close",
+		}
+
 		session, err := c.store.Get(r, "auth-installation")
 		if err != nil {
 			c.logger.Debugf("could not get session store: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -164,27 +170,14 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 		t, ok := token.(*oauth2.Token)
 		if err != nil || !ok {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 
 		usr, err := c.api.GetUser(tctx, t.AccessToken)
 		if err != nil {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
-		}
-
-		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		errMsg := map[string]interface{}{
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
 		}
 
 		var resp interface{}
@@ -201,14 +194,14 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			},
 		), &resp, client.WithRetries(3)); err != nil {
 			c.logger.Errorf("could not insert a new user: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 
 		session, err = c.store.Get(r, "authorization")
 		if err != nil {
 			c.logger.Errorf("could not get an authorization session: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -220,7 +213,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 		if err != nil {
 			c.logger.Errorf("could not issue a new jwt: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -228,7 +221,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		session.Options.MaxAge = 60 * 60 * 24
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Errorf("could not save current session: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			embeddable.InstallationErrorPage.Execute(rw, errMsg)
 			return
 		}
 

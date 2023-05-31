@@ -95,7 +95,11 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			uid,
 		), &ures); err != nil {
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		}
 
@@ -135,12 +139,20 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		default:
 		}

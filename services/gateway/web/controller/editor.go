@@ -106,7 +106,11 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		), &ures); err != nil {
 			c.logger.Debugf("could not get user %d access info: %s", uid, err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		}
 
@@ -159,12 +163,20 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		default:
 		}
