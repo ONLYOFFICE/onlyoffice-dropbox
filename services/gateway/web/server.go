@@ -83,10 +83,10 @@ func (s *GdriveHTTPService) InitializeServer() *mux.Router {
 func (s *GdriveHTTPService) InitializeRoutes() {
 	fs := http.FileServer(http.Dir("services/gateway/static"))
 	s.mux.Handle("/static/*", http.StripPrefix("/static/", fs))
-	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache, s.sessionMiddleware.Protect)
+	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache, csrf.Protect([]byte(s.credentials.ClientSecret)))
 
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
-	root.Use(csrf.Protect([]byte(s.credentials.ClientSecret)))
+	root.Use(s.sessionMiddleware.Protect)
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
@@ -95,7 +95,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
-	api.Use(csrf.Protect([]byte(s.credentials.ClientSecret)))
+	api.Use(s.sessionMiddleware.Protect)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
 
 	s.mux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

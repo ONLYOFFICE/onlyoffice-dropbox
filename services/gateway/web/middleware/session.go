@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -78,7 +77,8 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 			m.logger.Debugf("refreshed current session: %s", signature)
 		}
 
-		next.ServeHTTP(rw, r.WithContext(context.WithValue(context.Background(), "authorization", token["jti"].(string))))
+		rw.Header().Set("X-User", token["jti"].(string))
+		next.ServeHTTP(rw, r)
 	}
 
 	return http.HandlerFunc(fn)

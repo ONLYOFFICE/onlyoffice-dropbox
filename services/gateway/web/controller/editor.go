@@ -81,8 +81,8 @@ func NewEditorController(
 func (c EditorController) BuildEditorPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
 			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
 			return
 		}

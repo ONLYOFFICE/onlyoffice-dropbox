@@ -81,8 +81,8 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
 		fileID := r.URL.Query().Get("file_id")
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
 			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
 			return
 		}
@@ -336,8 +336,8 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 
 func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
 			c.logger.Errorf("authorization context has no user id")
 			rw.WriteHeader(http.StatusForbidden)
 			return
