@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ONLYOFFICE</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,300"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <style>
+      body {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+        font-family: "Open Sans";
+      }
+
+      .container {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .tile-container {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 1rem;
+      }
+
+      .tile {
+        display: flex;
+        align-items: center;
+        background-color: #ffffff;
+        border: 1px solid #d0d5da;
+        padding: 11px 13px 11px 13px;
+        border-radius: 4px;
+        width: 168px;
+        height: 54px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tile_active {
+        background-color: #eceef1;
+        border: 1px solid #3db8ec;
+      }
+
+      .filename-input {
+        height: 36px;
+        width: 96%;
+        border: 1px solid #d0d5da;
+        border-radius: 3px;
+        padding: 0px 10px 0px 10px;
+        background-color: #ffffff;
+      }
+
+      .filename-input:disabled {
+        background-color: #eaeaeb;
+      }
+
+      .filename-label {
+        font-family: "Open Sans";
+        font-style: normal;
+        font-weight: 600;
+        font-size: 15px;
+        line-height: 16px;
+        color: #333333;
+      }
+
+      .button {
+        height: 40px;
+        width: 100%;
+        padding: 12px 16px 12px 16px;
+        border-radius: 3px;
+        border-width: 0;
+        transition: all 0.2s ease-in;
+        cursor: pointer;
+      }
+
+      .button_primary {
+        background-color: #2da7db;
+        color: white;
+      }
+
+      .button_secondary {
+        background-color: #ffffff;
+        border: 1px solid #d0d5da;
+        color: black;
+      }
+
+      .button:focus,
+      .button:hover {
+        box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
+          0 17px 50px 0 rgba(0, 0, 0, 0.19);
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
+      #creation {
+        width: 100%;
+        height: auto;
+        display: flex;
+        justify-content: flex-start;
+        flex-direction: column;
+        padding: 24px;
+        max-width: 602px;
+        border: 1px solid #efefef;
+        border-radius: 6px;
+        box-shadow: 0px 5px 20px rgba(4, 15, 27, 0.07);
+      }
+
+      @media all and (max-width: 600px) {
+        .tile-container {
+          justify-content: center;
+          max-height: fit-content;
+        }
+
+        .tile {
+          margin: 0 1rem 1rem 1rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container" x-data="createForm()">
+      <div id="creation" x-show="!loading && !error" hidden>
+        <h2 style="margin: 1rem 0 1rem 0">{{.createFileTitle}}</h2>
+        <hr
+          style="width: 100%; background-color: #f2f4f6; margin-bottom: 1rem"
+          noshade
+          size="1px"
+        />
+        <div style="margin-bottom: 0.5rem">
+          <label class="filename-label" for="name">{{.createFileInput}}</label>
+        </div>
+        <form style="width: 100%; position: relative">
+          <input
+            class="filename-input"
+            id="name"
+            placeholder="{{.createFilePlaceholder}}"
+            autocomplete="off"
+            x-model="name"
+            maxlength="100"
+            :disabled="loading || error"
+          />
+          <div class="tile-container">
+            <div
+              class="tile tile_active"
+              role="button"
+              x-on:click="select('docx')"
+              :class="{ tile_active: action == 'docx' }"
+            >
+              <div style="padding-right: 1rem">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M4 1H19L28 10V31H4V1Z" fill="white" />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M4 31H28V10L19 1H4V31ZM19 0H3V32H29V10L19 0Z"
+                    fill="#BFBFBF"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M6 21C6 20.4477 6.44772 20 7 20H25C25.5523 20 26 20.4477 26 21V28C26 28.5523 25.5523 29 25 29H7C6.44772 29 6 28.5523 6 28V21ZM22 22H21V24H22V25H21V27H22V25H24V27H25V25H24V24H25V22H24V24H22V22ZM7 27V22H10V23H8V26H10V27H7ZM10 26V23H11V26H10ZM20 22H18V23H17V26H18V27H20V26H18V23H20V22ZM13 23V22H15V23H13ZM13 26H12V23H13V26ZM15 26V27H13V26H15ZM15 26H16V23H15V26Z"
+                    fill="#1E7AAA"
+                  />
+                  <path d="M19 4H6V6H19V4Z" fill="#C4C4C4" />
+                  <path d="M19 8H6V10H26V9H19V8Z" fill="#C4C4C4" />
+                  <path d="M26 12H6V14H26V12Z" fill="#C4C4C4" />
+                  <path d="M6 16H20V18H6V16Z" fill="#C4C4C4" />
+                  <path
+                    opacity="0.3"
+                    d="M18 10.0002V1H19V9.00024H28L29 10L18 10.0002Z"
+                    fill="#4E4E4E"
+                  />
+                </svg>
+              </div>
+              <div>{{.createDocx}}</div>
+            </div>
+            <div
+              class="tile"
+              role="button"
+              x-on:click="select('xlsx')"
+              :class="{ tile_active: action == 'xlsx' }"
+            >
+              <div style="padding-right: 1rem">
+                <svg
+                  width="33"
+                  height="32"
+                  viewBox="0 0 33 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4.66675 1H19.6667L28.6667 10V31H4.66675V1Z"
+                    fill="white"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M4.66675 31H28.6667V10L19.6667 1H4.66675V31ZM19.6667 0H3.66675V32H29.6667V10L19.6667 0Z"
+                    fill="#BFBFBF"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M6.66675 21C6.66675 20.4477 7.11446 20 7.66675 20H25.6667C26.219 20 26.6667 20.4477 26.6667 21V28C26.6667 28.5523 26.219 29 25.6667 29H7.66675C7.11446 29 6.66675 28.5523 6.66675 28V21ZM13.6667 22H12.6667V27H15.6667V26H13.6667V22ZM17.6667 22H19.6667V23H17.6667V22ZM17.6667 24H16.6667V23H17.6667V24ZM19.6667 25H17.6667V24H19.6667V25ZM19.6667 26V25H20.6667V26H19.6667ZM19.6667 26V27H16.6667V26H19.6667ZM11.6667 22H10.6667V24H8.66675V22H7.66675V24H8.66675V25H7.66675V27H8.66675V25H10.6667V27H11.6667V25H10.6667V24H11.6667V22ZM24.6667 22H25.6667V24H24.6667V22ZM24.6667 25V24H22.6667V22H21.6667V24H22.6667V25H21.6667V27H22.6667V25H24.6667ZM24.6667 25H25.6667V27H24.6667V25Z"
+                    fill="#6AAA1E"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M6.66675 18H26.6667V9H13.6667V6H19.6667L19.5859 5H6.66675V18ZM20.6667 10V13H25.6667V10H20.6667ZM19.6667 13V10H13.6667V13H19.6667ZM12.6667 6V9H7.66675V6H12.6667ZM7.66675 10H12.6667V13H7.66675V10ZM7.66675 14H12.6667V17H7.66675V14ZM19.6667 14H13.6667V17H19.6667V14ZM20.6667 17V14H25.6667V17H20.6667Z"
+                    fill="#D0D5DA"
+                  />
+                  <path
+                    opacity="0.3"
+                    d="M18.6667 10.0002V1H19.6667V9.00024H28.6667L29.6667 10L18.6667 10.0002Z"
+                    fill="#4E4E4E"
+                  />
+                </svg>
+              </div>
+              <div>{{.createXlsx}}</div>
+            </div>
+            <div
+              class="tile"
+              role="button"
+              x-on:click="select('pptx')"
+              :class="{ tile_active: action == 'pptx' }"
+            >
+              <div style="padding-right: 1rem">
+                <svg
+                  width="33"
+                  height="32"
+                  viewBox="0 0 33 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4.33325 1H19.3333L28.3333 10V31H4.33325V1Z"
+                    fill="white"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M4.33325 31H28.3333V10L19.3333 1H4.33325V31ZM19.3333 0H3.33325V32H29.3333V10L19.3333 0Z"
+                    fill="#BFBFBF"
+                  />
+                  <path d="M9.33325 23H8.33325V24H9.33325V23Z" fill="#F36700" />
+                  <path d="M12.3333 23H13.3333V24H12.3333V23Z" fill="#F36700" />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M6.33325 21C6.33325 20.4477 6.78097 20 7.33325 20H25.3333C25.8855 20 26.3333 20.4477 26.3333 21V28C26.3333 28.5523 25.8855 29 25.3333 29H7.33325C6.78097 29 6.33325 28.5523 6.33325 28V21ZM22.3333 22H21.3333V24H22.3333V25H21.3333V27H22.3333V25H24.3333V27H25.3333V25H24.3333V24H25.3333V22H24.3333V24H22.3333V22ZM15.3333 22H20.3333V23H18.3333V27H17.3333V23H15.3333V22ZM7.33325 22V27H8.33325V25H10.3333V22H7.33325ZM11.3333 27V22H14.3333V25H12.3333V27H11.3333Z"
+                    fill="#F36700"
+                  />
+                  <path
+                    d="M6.33325 4V18H26.3333V9H25.3333V17H7.33325V5H19.3333V4H6.33325Z"
+                    fill="#D0D5DA"
+                  />
+                  <path
+                    d="M19.3333 7H16.3333V6H12.3333V8H19.3333V7Z"
+                    fill="#D0D5DA"
+                  />
+                  <path d="M10.3333 6H8.33325V8H10.3333V6Z" fill="#D0D5DA" />
+                  <path
+                    d="M17.3333 10V11H15.3333V12H12.3333V10H17.3333Z"
+                    fill="#D0D5DA"
+                  />
+                  <path d="M10.3333 14H8.33325V16H10.3333V14Z" fill="#D0D5DA" />
+                  <path
+                    d="M12.3333 14H15.3333V15H23.3333V16H12.3333V14Z"
+                    fill="#D0D5DA"
+                  />
+                  <path d="M10.3333 10H8.33325V12H10.3333V10Z" fill="#D0D5DA" />
+                  <path
+                    opacity="0.3"
+                    d="M18.3333 10.0002V1H19.3333V9.00024H28.3333L29.3333 10L18.3333 10.0002Z"
+                    fill="#4E4E4E"
+                  />
+                </svg>
+              </div>
+              <div>{{.createPptx}}</div>
+            </div>
+          </div>
+          <div
+            style="
+              position: relative;
+              display: flex;
+              justify-content: flex-end;
+              align-items: center;
+              margin-top: 2rem;
+            "
+          >
+            <button
+              class="button button_primary"
+              x-on:click="submit();"
+              style="
+                flex-grow: 2;
+                flex-basis: 0;
+                margin-right: 6px;
+                max-width: 164px;
+              "
+              :disabled="!name || !action || loading || error"
+            >
+              {{.createButton}}
+            </button>
+            <button
+              class="button button_secondary"
+              style="flex-grow: 1; flex-basis: 0; max-width: 118px"
+              onclick="window.close();"
+              :disabled="loading || error"
+            >
+              {{.cancelButton}}
+            </button>
+          </div>
+          {{ .csrfField }}
+        </form>
+      </div>
+      <div id="error" x-show="!loading && error" hidden>
+        {{template "error" .}}
+      </div>
+      <div x-show="loading && !error">{{template "spinner"}}</div>
+    </div>
+    <script>
+      function createForm() {
+        document.getElementById("creation").hidden = false;
+        document.getElementById("error").hidden = false;
+        return {
+          name: "",
+          action: "",
+          loading: false,
+          error: false,
+          select(type) {
+            this.action = type;
+          },
+          async submit() {
+            this.loading = true;
+            this.error = false;
+            const csrfToken =
+              document.getElementsByName("gorilla.csrf.Token")[0].value;
+            const urlSearchParams = new URLSearchParams(window.location.search);
+            const params = Object.fromEntries(urlSearchParams.entries());
+            try {
+              const state = JSON.parse(params.state || "{}");
+              state.action = this.action;
+              state.filename = this.name;
+              const resp = await fetch(`/api/create`, {
+                method: "POST",
+                headers: {
+                  "X-CSRF-Token": csrfToken,
+                },
+                body: JSON.stringify(state),
+              });
+
+              if (resp.status >= 300)
+                throw new Error("could not convert a file");
+
+              if (resp.redirected) {
+                window.location.assign(resp.url);
+              }
+            } catch {
+              this.error = true;
+              this.loading = false;
+            }
+          },
+        };
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+   "errorMain": "Sorry, the document cannot be opened",
+   "errorSubtext": "Please try again",
+   "reloadButton": "Reload",
+   "cancelButton": "Cancel",
+   "openButton": "Open",
+   "dataRestrictions": "Due to format restrictions, the data might be lost when saving to the original file",
+   "moreInfo": "More info:",
+   "openEditing": "Open the file for editing",
+   "editCopy": "Edit only the file copy, not the original file",
+   "createOOXML": "Create an OOXML file copy ",
+   "openView": "Open the file for viewing only",
+   "selectAction": "Please select the action:",
+   "cannotOpen": "This file type can not be opened correctly.",
+   "openOnlyoffice": "Open with ONLYOFFICE",
+   "createFileTitle": "Create a new ONLYOFFICE file",
+   "createFileInput": "Title",
+   "createFilePlaceholder": "New Document",
+   "createDocx": "Document",
+   "createPptx": "Presentation",
+   "createXlsx": "Spreadsheet",
+   "createButton": "Create"
+}

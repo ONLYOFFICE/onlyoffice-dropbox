@@ -1,0 +1,51 @@
+namespace: "dropbox"
+name: "gateway"
+version: 0
+address: ":4044"
+repl_address: ":9999"
+debug: false
+registry:
+  addresses: [""]
+  type: 2
+messaging:
+  type: 1
+  addresses: [""]
+  durable: true
+tracer:
+  enable: false
+  address: ""
+  type: 1
+resilience:
+  rate_limiter:
+    limit: 1000
+    iplimit: 100
+  circuit_breaker:
+    timeout: 15000
+cors:
+  origins: [""]
+  methods: ["GET", "POST", "DELETE", "OPTIONS", "PUT"]
+  headers: ["*"]
+  credentials: true
+logger:
+  name: "gateway-logger"
+  level: 1
+  color: true
+worker:
+  addresses: [""]
+oauth:
+  project_id: ""
+  client_id: ""
+  client_secret: ""
+  auth_uri: ""
+  token_uri: ""
+  auth_provider_x509_cert_url: ""
+  redirect_uris: [""]
+  javascript_origins: [""]
+onlyoffice:
+  builder:
+    document_server_url: ""
+    document_server_secret: ""
+    document_server_header: ""
+    gateway_url: ""
+    callback_url: ""
+    allowed_downloads: 10

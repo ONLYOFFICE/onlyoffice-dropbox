@@ -1,0 +1,266 @@
+<!--*
+ *
+ * (c) Copyright Ascensio System SIA 2023
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+*-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONLYOFFICE</title>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,300" rel="stylesheet" type="text/css">
+    <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        html {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+
+        }
+
+        html::-webkit-scrollbar {
+            display: none;
+        }
+
+        hr.solid {
+            border-top: 1px solid #ECEEF1;
+        }
+
+        .text {
+            font-family: 'Open Sans';
+            font-weight: 400;
+            font-size: 13px;
+            line-height: 20px;
+            color: #333333;
+            margin: 0;
+        }
+
+        label {
+            font-family: 'Open Sans';
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 20px;
+        }
+
+        span {
+            font-family: 'Open Sans';
+            font-weight: 400;
+            font-size: 12px;
+            line-height: 16px;
+            color: #A3A9AE;
+        }
+
+        .button {
+            height: 40px;
+            width: 100%;
+            padding: 12px 16px 12px 16px;
+            border-radius: 3px;
+            border-width: 0;
+            transition: all 0.2s ease-in;
+            cursor: pointer;
+        }
+
+
+        .button_primary {
+            background-color: #2DA7DB;
+            color: white;
+        }
+
+        .button_secondary {
+            background-color: #FFFFFF;
+            border: 1px solid #D0D5DA;
+            color: black;
+        }
+
+        .button:focus,
+        .button:hover {
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .tooltip {
+            transform: translate(40.5%, -70%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 522px;
+            height: 68px;
+            background: #FFFFFF;
+            position: relative;
+            -moz-border-radius: 12px;
+            -webkit-border-radius: 12px;
+            border-radius: 12px;
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        .tooltip::before {
+            content: "";
+            position: absolute;
+            right: 100%;
+            top: 24px;
+            width: 0;
+            height: 0;
+            border-top: 13px solid transparent;
+            border-right: 26px solid #FFFFFF;
+            border-bottom: 13px solid transparent;
+        }
+    </style>
+</head>
+
+<body>
+    <div
+        style="width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div x-data="convertForm()">
+            <div id="conversion" x-show="!loading && !error" hidden>
+                <h2
+                    style="font-family: Open Sans; font-weight: 700; font-size: 21px; line-height: 28px; padding-left: 1rem;">
+                    {{.openOnlyoffice}}</h2>
+                <div style="width: 375px;">
+                    <hr class="solid" style="margin-bottom: 0.7rem;" />
+                    <div style="padding-left: 1rem; padding-right: 1rem;">
+                        <p class="text">{{.cannotOpen}}</p>
+                        <p class="text">{{.selectAction}}</p>
+                        <form style="margin-top: 0.7rem; margin-bottom: 1rem;" @submit.prevent="submit">
+                            <div style="margin-bottom: 0.75rem;">
+                                <input type="radio" id="view" name="editor_action" value="view"
+                                    style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
+                                <label for="view">{{.openView}}</label>
+                                <br />
+                            </div>
+                            {{if .OOXML}}
+                            <div style="margin-bottom: 0.75rem;">
+                                <input type="radio" id="create" name="editor_action" value="create"
+                                    style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
+                                <label for="create">{{.createOOXML}}</label>
+                                <br />
+                                <div style="padding-left: 1.25rem;">
+                                    <span>{{.editCopy}}</span>
+                                </div>
+                            </div>
+                            {{end}}
+                            {{if .LossEdit}}
+                            <div>
+                                <input type="radio" id="edit" name="editor_action" value="edit"
+                                    style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
+                                <label for="edit">{{.openEditing}}</label>
+                                <span style="cursor: pointer;" x-data="{ tooltip: false }"
+                                    x-on:mouseover="tooltip = true" x-on:mouseleave="tooltip = false">
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                            d="M6 12C9.31371 12 12 9.31371 12 6C12 2.68629 9.31371 0 6 0C2.68629 0 0 2.68629 0 6C0 9.31371 2.68629 12 6 12ZM5 6C5 5.44772 5.44772 5 6 5C6.55228 5 7 5.44772 7 6V9C7 9.55229 6.55228 10 6 10C5.44772 10 5 9.55229 5 9V6ZM6 2C5.44772 2 5 2.44772 5 3C5 3.55228 5.44772 4 6 4C6.55228 4 7 3.55228 7 3C7 2.44772 6.55228 2 6 2Z"
+                                            fill="#D0D5DA" />
+                                    </svg>
+                                    <div style="position: absolute;">
+                                        <div x-show="tooltip" class="tooltip">
+                                            <div
+                                                style="padding: 10px; display: flex; justify-content: center; align-items: center;">
+                                                <b style="color: black;">{{.moreInfo}}&nbsp;</b>
+                                                <a style="text-decoration: underline; color: black;"
+                                                    href="https://api.onlyoffice.com/editors/nextcloud#editable">
+                                                    https://api.onlyoffice.com/editors/nextcloud#editable
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </span>
+                                <br />
+                                <div style="padding-left: 1.25rem;">
+                                    <span>{{.dataRestrictions}}</span>
+                                </div>
+                            </div>
+                            {{end}}
+                            <div
+                                style="display: flex; justify-content: center; align-items: center; margin: 6px; padding-top: 1rem;">
+                                <button type="submit" class="button button_primary"
+                                    style="flex-grow: 2; flex-basis: 0; margin-right: 6px;"
+                                    :disabled="!action || loading">{{.openButton}}</button>
+                                <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;"
+                                    onclick="window.close();" :disabled="loading">{{.cancelButton}}</button>
+                            </div>
+                            {{ .csrfField }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div id="error" x-show="!loading && error" hidden>
+                {{template "error" .}}
+            </div>
+            <div x-show="loading && !error">
+                {{template "spinner"}}
+            </div>
+        </div>
+    </div>
+    <script>
+        function convertForm() {
+            document.getElementById("conversion").hidden = false;
+            document.getElementById("error").hidden = false;
+            return {
+                action: '',
+                loading: false,
+                error: false,
+                async submit() {
+                    this.loading = true;
+                    this.error = false;
+                    const csrfToken = document.getElementsByName("gorilla.csrf.Token")[0].value;
+                    const urlSearchParams = new URLSearchParams(window.location.search);
+                    const params = Object.fromEntries(urlSearchParams.entries());
+                    try {
+                        const state = JSON.parse(params.state || '{}');
+                        state.action = this.action;
+                        state.file_id = params["file_id"];
+                        const resp = await fetch(`/api/convert`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-Token': csrfToken,
+                            },
+                            body: JSON.stringify(state),
+                        });
+
+                        if (resp.status >= 300) throw new Error('could not convert a file');
+
+                        if (resp.redirected) {
+                            window.location.assign(resp.url);
+                        }
+                    } catch {
+                        this.error = true;
+                        this.loading = false;
+                    } 
+                },
+            };
+        }
+    </script>
+</body>
+
+</html>
