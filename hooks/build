@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export DOCKER_BUILDKIT=1 PRODUCT_VERSION=$DOCKER_TAG
+docker-compose build
