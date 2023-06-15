@@ -76,13 +76,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 		v, _ := cv.CreateCodeVerifier()
 		verifier := v.String()
 
-		session, err := c.store.Get(r, "auth-installation")
-		if err != nil {
-			c.logger.Debugf("could not get a session. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
-			return
-		}
-
+		session, _ := c.store.Get(r, "auth-installation")
 		session.Values["verifier"] = verifier
 		state, err := c.stateGenerator.GenerateState(verifier)
 		if err != nil {
@@ -198,13 +192,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			return
 		}
 
-		session, err = c.store.Get(r, "authorization")
-		if err != nil {
-			c.logger.Errorf("could not get an authorization session: %s", err.Error())
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
-			return
-		}
-
+		session, _ = c.store.Get(r, "authorization")
 		tkn, err := c.jwtManager.Sign(c.oauth.ClientSecret, jwt.RegisteredClaims{
 			ID:        t.Extra("account_id").(string),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

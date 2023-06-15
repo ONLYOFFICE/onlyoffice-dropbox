@@ -91,7 +91,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
 	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter()
-	auth.Handle("/auth", s.authController.BuildGetAuth()).Methods(http.MethodGet)
+	auth.Handle("/install", s.authController.BuildGetAuth()).Methods(http.MethodGet)
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
@@ -99,6 +99,6 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
 
 	s.mux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/oauth/auth", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/oauth/install", http.StatusMovedPermanently)
 	})
 }
