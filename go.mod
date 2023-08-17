@@ -150,7 +150,7 @@ require (
 )
 
 require (
-	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.1
+	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.2
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gorilla/csrf v1.7.1
