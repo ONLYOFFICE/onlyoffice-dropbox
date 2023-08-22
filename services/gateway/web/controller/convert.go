@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -46,6 +47,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )
+
+var _ErrCsvIsNotSupported = errors.New("csv conversion is not supported")
 
 type ConvertController struct {
 	client      client.Client
@@ -175,7 +178,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 
 		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			"CSRF":     csrf.Token(r),
-			"OOXML":    c.fileUtil.IsExtensionOOXMLConvertable(ext),
+			"OOXML":    ext != "csv" && (c.fileUtil.IsExtensionOOXMLConvertable(ext) || c.fileUtil.IsExtensionLossEditable(ext)),
 			"LossEdit": c.fileUtil.IsExtensionLossEditable(ext),
 			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "openOnlyoffice",
@@ -281,6 +284,10 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	if err != nil {
 		c.logger.Debugf("could not get file type: %s", err.Error())
 		return nil, err
+	}
+
+	if ext == "csv" {
+		return nil, _ErrCsvIsNotSupported
 	}
 
 	creq := request.ConvertRequest{
