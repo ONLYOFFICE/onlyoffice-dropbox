@@ -15,6 +15,9 @@ var templateFiles embed.FS
 //go:embed locales
 var localeFiles embed.FS
 
+//go:embed images
+var IconFiles embed.FS
+
 var (
 	Bundle     = i18n.NewBundle(language.English)
 	EditorPage = template.Must(template.ParseFS(

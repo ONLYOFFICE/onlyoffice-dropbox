@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	shttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -81,9 +82,8 @@ func (s *GdriveHTTPService) InitializeServer() *mux.Router {
 
 // InitializeRoutes builds all http routes.
 func (s *GdriveHTTPService) InitializeRoutes() {
-	fs := http.FileServer(http.Dir("services/gateway/static"))
-	s.mux.Handle("/static/*", http.StripPrefix("/static/", fs))
-	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache, csrf.Protect([]byte(s.credentials.ClientSecret)))
+	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
+		csrf.Protect([]byte(s.credentials.ClientSecret)))
 
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
 	root.Use(s.sessionMiddleware.Protect)
@@ -98,7 +98,6 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	api.Use(s.sessionMiddleware.Protect)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
 
-	s.mux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/oauth/install", http.StatusMovedPermanently)
-	})
+	var staticFS = http.FS(embeddable.IconFiles)
+	s.mux.NotFoundHandler = http.FileServer(staticFS)
 }
