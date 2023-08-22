@@ -86,7 +86,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		fileID := r.URL.Query().Get("file_id")
 		uid := rw.Header().Get("X-User")
 		if uid == "" {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 

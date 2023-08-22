@@ -83,19 +83,19 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		rw.Header().Set("Content-Type", "text/html")
 		uid := rw.Header().Get("X-User")
 		if uid == "" {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		var token jwt.MapClaims
 		if err := c.jwtManager.Verify(c.credentials.ClientSecret, r.URL.Query().Get("token"), &token); err != nil {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		fileID, ok := token["file_id"].(string)
 		if !ok {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 

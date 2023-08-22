@@ -71,6 +71,20 @@ func NewAuthController(
 	}
 }
 
+func (c AuthController) getRedirectURL(rw http.ResponseWriter, r *http.Request) string {
+	session, _ := c.store.Get(r, "url")
+	url := "https://www.dropbox.com/home"
+
+	if val, ok := session.Values["redirect"].(string); ok {
+		url = val
+	}
+
+	session.Options.MaxAge = -1
+	session.Save(r, rw)
+
+	return url
+}
+
 func (c AuthController) BuildGetAuth() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		v, _ := cv.CreateCodeVerifier()
@@ -81,14 +95,14 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 		state, err := c.stateGenerator.GenerateState(verifier)
 		if err != nil {
 			c.logger.Debugf("could not generate a new state. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		session.Values["state"] = state
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Debugf("could not save session. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
@@ -119,7 +133,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		code, state := strings.TrimSpace(query.Get("code")), strings.TrimSpace(query.Get("state"))
 		if code == "" || state == "" {
 			c.logger.Debug("empty auth code or state parameter")
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
@@ -213,6 +227,6 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			return
 		}
 
-		http.Redirect(rw, r, "https://www.dropbox.com/home", http.StatusMovedPermanently)
+		http.Redirect(rw, r, c.getRedirectURL(rw, r), http.StatusMovedPermanently)
 	}
 }
