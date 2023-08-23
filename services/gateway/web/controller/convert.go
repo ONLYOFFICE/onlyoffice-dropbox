@@ -57,6 +57,7 @@ type ConvertController struct {
 	fileUtil    onlyoffice.OnlyofficeFileUtility
 	store       *sessions.CookieStore
 	server      *config.ServerConfig
+	hasher      crypto.Hasher
 	credentials *oauth2.Config
 	onlyoffice  *shared.OnlyofficeConfig
 	logger      log.Logger
@@ -64,7 +65,7 @@ type ConvertController struct {
 
 func NewConvertController(
 	client client.Client, api aclient.DropboxClient, jwtManager crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig,
+	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
 	server *config.ServerConfig, credentials *oauth2.Config, logger log.Logger,
 ) ConvertController {
 	return ConvertController{
@@ -74,6 +75,7 @@ func NewConvertController(
 		fileUtil:    fileUtil,
 		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		server:      server,
+		hasher:      hasher,
 		credentials: credentials,
 		onlyoffice:  onlyoffice,
 		logger:      logger,
@@ -292,6 +294,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 
 	creq := request.ConvertRequest{
 		Async:      false,
+		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
 		Filetype:   fType,
 		Outputtype: "ooxml",
 		URL:        dres.Link,
