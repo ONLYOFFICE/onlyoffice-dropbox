@@ -30,5 +30,6 @@ var (
 	_ErrUserIdMatching       = errors.New("token uid and state uid do not match")
 	_ErrInvalidStateValue    = errors.New("invalid state value")
 	_ErrInvalidVerifierValue = errors.New("invalid verifier value")
+	_ErrCsvIsNotSupported    = errors.New("csv conversion is not supported")
 	group                    singleflight.Group
 )

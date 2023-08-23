@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -47,8 +46,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )
-
-var _ErrCsvIsNotSupported = errors.New("csv conversion is not supported")
 
 type ConvertController struct {
 	client      client.Client
