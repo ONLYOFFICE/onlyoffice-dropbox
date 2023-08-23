@@ -203,7 +203,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 					return
 				}
 
-				if _, err := c.api.UploadFile(tctx, fl.PathLower, ures.AccessToken, body); err != nil {
+				if _, err := c.api.UploadFile(tctx, fl.PathDisplay, ures.AccessToken, body); err != nil {
 					c.sendErrorResponse(
 						fmt.Sprintf("could not upload file changes: %s", err.Error()), rw,
 					)
