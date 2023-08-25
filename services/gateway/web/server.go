@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	shttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
@@ -35,7 +36,7 @@ type GdriveHTTPService struct {
 	mux               *mux.Router
 	authController    controller.AuthController
 	editorController  controller.EditorController
-	convertController controller.ConvertController
+	convertController convert.ConvertController
 	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
@@ -44,7 +45,7 @@ type GdriveHTTPService struct {
 func NewServer(
 	authController controller.AuthController,
 	editorController controller.EditorController,
-	convertController controller.ConvertController,
+	convertController convert.ConvertController,
 	sessionMiddleware middleware.SessionMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {

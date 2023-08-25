@@ -154,7 +154,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			state := strings.TrimSpace(query.Get("state"))
 			if state != session.Values["state"] {
 				c.logger.Errorf("state %s doesn't match %s", state, session.Values["state"])
-				return nil, _ErrInvalidStateValue
+				return nil, ErrInvalidStateValue
 			}
 
 			c.logger.Debugf("auth state is valid: %s", state)

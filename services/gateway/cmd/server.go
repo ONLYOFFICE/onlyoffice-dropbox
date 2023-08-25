@@ -21,6 +21,7 @@ package cmd
 import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
@@ -54,7 +55,7 @@ func Server() *cli.Command {
 					shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
 					controller.NewAuthController,
 					controller.NewEditorController,
-					controller.NewConvertController,
+					convert.NewConvertController,
 					middleware.NewSessionMiddleware,
 					chttp.NewService, web.NewServer,
 					client.NewDropboxAuthClient,

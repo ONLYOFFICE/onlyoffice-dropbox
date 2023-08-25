@@ -16,19 +16,8 @@
  *
  */
 
-package controller
+package convert
 
-import (
-	"errors"
+import "errors"
 
-	"golang.org/x/sync/singleflight"
-)
-
-var (
-	ErrCouldNotCastValue    = errors.New("could not cast value to type")
-	ErrSessionTokenCasting  = errors.New("could not cast a session token")
-	ErrUserIdMatching       = errors.New("token uid and state uid do not match")
-	ErrInvalidStateValue    = errors.New("invalid state value")
-	ErrInvalidVerifierValue = errors.New("invalid verifier value")
-	group                   singleflight.Group
-)
+var ErrCsvIsNotSupported = errors.New("csv is not supported")

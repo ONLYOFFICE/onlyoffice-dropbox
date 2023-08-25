@@ -34,7 +34,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var _ErrInvalidResponsePayload = errors.New("invalid response payload")
+var ErrInvalidResponsePayload = errors.New("invalid response payload")
 
 type DropboxClient struct {
 	client      *resty.Client
@@ -79,7 +79,7 @@ func (c DropboxClient) GetUser(ctx context.Context, token string) (response.Drop
 	}
 
 	if res.AccountID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -101,7 +101,7 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 	}
 
 	if res.ID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -120,7 +120,7 @@ func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) 
 	}
 
 	if res.Link == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -147,7 +147,7 @@ func (c DropboxClient) uploadFile(ctx context.Context, path, token, mode string,
 	}
 
 	if res.ID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
