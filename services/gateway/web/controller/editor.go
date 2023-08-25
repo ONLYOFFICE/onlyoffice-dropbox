@@ -118,7 +118,8 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		var config response.ConfigResponse
 		var wg sync.WaitGroup
 		wg.Add(3)
-		errChan := make(chan error, 3)
+		errChan := make(chan error, 2)
+		downloadErrChan := make(chan error, 1)
 		userChan := make(chan response.DropboxUserResponse, 1)
 		fileChan := make(chan response.DropboxFileResponse, 1)
 		downloadChan := make(chan response.DropboxDownloadResponse, 1)
@@ -149,7 +150,7 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			defer wg.Done()
 			dres, err := c.api.GetDownloadLink(r.Context(), fileID, ures.AccessToken)
 			if err != nil {
-				errChan <- err
+				downloadErrChan <- err
 				return
 			}
 
@@ -163,16 +164,35 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		select {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
-			// TODO: Generic error page
 			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
 			})
 			return
+		case derr := <-downloadErrChan:
+			c.logger.Infof("could not generete a download url: %s", derr.Error())
+			user := <-userChan
+			file := <-fileChan
+			loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
+			embeddable.EmailPage.Execute(rw, map[string]interface{}{
+				"titleText": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailMain",
+				}),
+				"subtitleTextOne": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailSubtitleOne",
+				}),
+				"subtitleTextTwo": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailSubtitleTwo",
+				}),
+				"footnote": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailFootnote",
+				}),
+				"file": file.Name,
+			})
+			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
-			// TODO: Generic error page
 			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",

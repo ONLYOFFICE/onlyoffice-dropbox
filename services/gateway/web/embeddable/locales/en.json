@@ -19,5 +19,9 @@
     "createDocx": "Document",
     "createPptx": "Presentation",
     "createXlsx": "Spreadsheet",
-    "createButton": "Create"
+    "createButton": "Create",
+    "emailMain": "Thanks for siging up!",
+    "emailSubtitleOne": "Before you can access",
+    "emailSubtitleTwo": ", you need to verify your email",
+    "emailFootnote": "Please check your inbox"
 }

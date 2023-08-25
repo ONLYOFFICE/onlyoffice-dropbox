@@ -76,6 +76,7 @@ func (c DropboxClient) GetUser(ctx context.Context, token string) (response.Drop
 		SetAuthToken(token).
 		SetResult(&res).
 		Post("https://api.dropboxapi.com/2/users/get_current_account"); err != nil {
+		return res, err
 	}
 
 	if res.AccountID == "" {
