@@ -8,7 +8,7 @@
     "moreInfo": "More info:",
     "openEditing": "Open the file for editing",
     "editCopy": "Edit only the file copy, not the original file",
-    "createOOXML": "Create an OOXML file copy ",
+    "createOOXML": "Create an OOXML file copy",
     "openView": "Open the file for viewing only",
     "selectAction": "Please select the action:",
     "cannotOpen": "This file type can not be opened correctly.",
@@ -20,7 +20,7 @@
     "createPptx": "Presentation",
     "createXlsx": "Spreadsheet",
     "createButton": "Create",
-    "emailMain": "Thanks for siging up!",
+    "emailMain": "Thanks for signing up!",
     "emailSubtitleOne": "Before you can access",
     "emailSubtitleTwo": ", you need to verify your email",
     "emailFootnote": "Please check your inbox"
