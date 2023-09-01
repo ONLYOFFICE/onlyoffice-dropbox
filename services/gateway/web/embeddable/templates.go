@@ -48,4 +48,53 @@ func init() {
 	}
 
 	Bundle.MustAddMessages(emsg.Tag, rmsg.Messages...)
+
+	dmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/de.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(rmsg.Tag, dmsg.Messages...)
+
+	esmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/es.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(esmsg.Tag, esmsg.Messages...)
+
+	frmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/fr.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(frmsg.Tag, frmsg.Messages...)
+
+	itmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/it.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(itmsg.Tag, itmsg.Messages...)
+
+	jmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/ja.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(jmsg.Tag, jmsg.Messages...)
+
+	ptmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/pt-BR.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(ptmsg.Tag, ptmsg.Messages...)
+
+	zmsg, err := Bundle.LoadMessageFileFS(localeFiles, "locales/zh.json")
+	if err != nil {
+		panic(err)
+	}
+
+	Bundle.MustAddMessages(zmsg.Tag, zmsg.Messages...)
 }
