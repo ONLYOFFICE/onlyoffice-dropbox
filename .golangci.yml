@@ -1,0 +1,25 @@
+linters-settings:
+  linters:
+    disable: [gochecknoglobals, ireturn, exhaustivestruct, tagalign, tagliatelle]
+  varnamelen:
+    # The longest distance, in source lines, that is being considered a "small scope." (defaults to 5)
+    # Variables used in at most this many lines will be ignored.
+    max-distance: 5
+    # The minimum length of a variable's name that is considered "long." (defaults to 3)
+    # Variable names that are at least this long will be ignored.
+    min-name-length: 1
+    # Check method receivers. (defaults to false)
+    check-receiver: false
+    # Check named return values. (defaults to false)
+    check-return: false
+    # Check type parameters. (defaults to false)
+    check-type-param: false
+    # Ignore "ok" variables that hold the bool return value of a type assertion. (defaults to false)
+    ignore-type-assert-ok: false
+    # Ignore "ok" variables that hold the bool return value of a map index. (defaults to false)
+    ignore-map-index-ok: false
+    # Ignore "ok" variables that hold the bool return value of a channel receive. (defaults to false)
+    ignore-chan-recv-ok: false
+    # Optional list of variable names that should be ignored completely. (defaults to empty list)
+    ignore-names:
+      - err

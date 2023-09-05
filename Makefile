@@ -28,7 +28,7 @@ audit:
 ## lint: run golangci linter
 .PHONY: lint
 lint:
-	golangci-lint run --enable-all
+	golangci-lint run
 
 ## test: run all tests
 .PHONY: test
