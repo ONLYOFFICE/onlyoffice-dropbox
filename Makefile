@@ -66,19 +66,21 @@ run/gateway:
 
 ## build: compile all services
 .PHONY: build
-build: build/callback
-	@go build -o build/gateway $(SERVICES_DIR)/gateway/main.go
-
-## build/callback: compile callback service
-.PHONY: build/callback
-build/callback: build/auth
-	@go build -o build/callback $(SERVICES_DIR)/callback/main.go
+build: build/auth build/callback build/gateway
 
 ## build/auth: compile auth service
 .PHONY: build/auth
 build/auth:
-	@mkdir build
 	@go build -o build/auth $(SERVICES_DIR)/auth/main.go
+
+## build/callback: compile callback service
+.PHONY: build/callback
+build/callback:
+	@go build -o build/callback $(SERVICES_DIR)/callback/main.go
+
+.PHONY: build/gateway
+build/gateway:
+	@go build -o build/gateway $(SERVICES_DIR)/gateway/main.go
 
 ## clean: remove build directory
 .PHONY: clean
