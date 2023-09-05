@@ -19,6 +19,7 @@ coverage/
 # Build output
 build/
 dist/
+tmp/
 
 # yarn v2
 .yarn/cache
