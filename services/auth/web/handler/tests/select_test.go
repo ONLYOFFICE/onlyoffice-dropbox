@@ -16,7 +16,7 @@
  *
  */
 
-package handler
+package handler_test
 
 import (
 	"context"
@@ -26,10 +26,12 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/service"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/handler"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/cache"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/stretchr/testify/assert"
+	"go-micro.dev/v4/logger"
 	"golang.org/x/oauth2"
 )
 
@@ -49,16 +51,18 @@ func TestSelectCaching(t *testing.T) {
 	service := service.NewUserService(adapter, mockEncryptor{}, cache,
 		&oauth2.Config{ClientSecret: "mock"}, log.NewEmptyLogger())
 
-	sel := NewUserSelectHandler(service, nil, &oauth2.Config{}, log.NewEmptyLogger())
+	sel := handler.NewUserSelectHandler(service, nil, &oauth2.Config{}, log.NewEmptyLogger())
 
-	service.CreateUser(context.Background(), domain.UserAccess{
+	if err := service.CreateUser(context.Background(), domain.UserAccess{
 		ID:           "mock",
 		AccessToken:  "mock",
 		RefreshToken: "mock",
 		TokenType:    "mock",
 		Scope:        "mock",
 		Expiry:       time.Now().UTC().Format(time.RFC3339),
-	})
+	}); err != nil {
+		logger.Fatal(err.Error())
+	}
 
 	t.Run("get user", func(t *testing.T) {
 		var res domain.UserAccess

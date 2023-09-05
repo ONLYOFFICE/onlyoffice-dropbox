@@ -107,11 +107,13 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		), &ures); err != nil {
 			c.logger.Debugf("could not get user %d access info: %s", uid, err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		}
 
@@ -164,18 +166,20 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		select {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		case derr := <-downloadErrChan:
 			c.logger.Infof("could not generete a download url: %s", derr.Error())
 			user := <-userChan
 			file := <-fileChan
 			loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
-			embeddable.EmailPage.Execute(rw, map[string]interface{}{
+			if err := embeddable.EmailPage.Execute(rw, map[string]interface{}{
 				"titleText": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "emailMain",
 				}),
@@ -189,15 +193,19 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 					MessageID: "emailFootnote",
 				}),
 				"file": file.Name,
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an email template: %w", err)
+			}
 			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error page template: %w", err)
+			}
 			return
 		default:
 		}
@@ -261,7 +269,9 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			fileType, err = c.fileUtil.GetFileType(ext)
 			if err != nil {
 				c.logger.Errorf("could not get file type: %s", err.Error())
-				embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+				if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg); err != nil {
+					c.logger.Errorf("could not execute an error page template: %w", err)
+				}
 				return
 			}
 
@@ -285,18 +295,22 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		sig, err := c.jwtManager.Sign(c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret, config)
 		if err != nil {
 			c.logger.Debugf("could not sign document server config: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg); err != nil {
+				c.logger.Errorf("could not execute an error page template: %w", err)
+			}
 			return
 		}
 
 		config.Token = sig
-		embeddable.EditorPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", config.ServerURL),
 			"config":  string(config.ToJSON()),
 			"docType": config.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "cancelButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute an editor template: %w", err)
+		}
 	}
 }

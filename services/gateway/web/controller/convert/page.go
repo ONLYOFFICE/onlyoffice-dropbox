@@ -51,11 +51,13 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			uid,
 		), &ures); err != nil {
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		}
 
@@ -95,20 +97,24 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain":    "Sorry, the document cannot be opened",
 				"errorSubtext": "Please try again",
 				"reloadButton": "Reload",
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		default:
 		}
@@ -129,7 +135,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
-		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			"CSRF":     csrf.Token(r),
 			"OOXML":    ext != "csv" && (c.fileUtil.IsExtensionOOXMLConvertable(ext) || c.fileUtil.IsExtensionLossEditable(ext)),
 			"LossEdit": c.fileUtil.IsExtensionLossEditable(ext),
@@ -175,6 +181,8 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "reloadButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute a convert template: %w", err)
+		}
 	}
 }

@@ -16,18 +16,19 @@
  *
  */
 
-package adapter
+package adapter_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMemoryAdapter(t *testing.T) {
-	adapter := NewMemoryUserAdapter()
+	adapter := adapter.NewMemoryUserAdapter()
 
 	t.Run("save user", func(t *testing.T) {
 		assert.NoError(t, adapter.InsertUser(context.Background(), user))

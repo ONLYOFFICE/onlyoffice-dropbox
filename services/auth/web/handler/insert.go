@@ -59,5 +59,9 @@ func (i UserInsertHandler) InsertUser(ctx context.Context, req response.UserResp
 		return usr, nil
 	})
 
-	return err
+	if err != nil {
+		return fmt.Errorf("an insertion error: %w", err)
+	}
+
+	return nil
 }

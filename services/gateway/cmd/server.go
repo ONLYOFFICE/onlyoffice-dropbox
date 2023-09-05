@@ -19,6 +19,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
@@ -45,14 +47,14 @@ func Server() *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			var (
-				CONFIG_PATH = c.String("config_path")
+				configPath = c.String("config_path")
 			)
 
 			app := pkg.NewBootstrapper(
-				CONFIG_PATH, pkg.WithModules(
+				configPath, pkg.WithModules(
 					crypto.NewStateGenerator,
-					shared.BuildNewIntegrationCredentialsConfig(CONFIG_PATH),
-					shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
+					shared.BuildNewIntegrationCredentialsConfig(configPath),
+					shared.BuildNewOnlyofficeConfig(configPath),
 					controller.NewAuthController,
 					controller.NewEditorController,
 					convert.NewConvertController,
@@ -63,7 +65,7 @@ func Server() *cli.Command {
 			).Bootstrap()
 
 			if err := app.Err(); err != nil {
-				return err
+				return fmt.Errorf("could not bootstrap a server: %w", err)
 			}
 
 			app.Run()

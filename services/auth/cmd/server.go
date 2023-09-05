@@ -19,6 +19,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/service"
@@ -43,12 +45,12 @@ func Server() *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			var (
-				CONFIG_PATH = c.String("config_path")
+				configPath = c.String("config_path")
 			)
 
 			app := pkg.NewBootstrapper(
-				CONFIG_PATH, pkg.WithModules(
-					shared.BuildNewIntegrationCredentialsConfig(CONFIG_PATH),
+				configPath, pkg.WithModules(
+					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					adapter.BuildNewUserAdapter, service.NewUserService,
 					handler.NewUserSelectHandler, handler.NewUserDeleteHandler,
 					handler.NewUserInsertHandler, rpc.NewService, web.NewAuthRPCServer,
@@ -56,7 +58,7 @@ func Server() *cli.Command {
 			).Bootstrap()
 
 			if err := app.Err(); err != nil {
-				return err
+				return fmt.Errorf("could not bootstrap a server: %w", err)
 			}
 
 			app.Run()

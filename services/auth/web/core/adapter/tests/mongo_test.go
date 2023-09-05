@@ -16,15 +16,17 @@
  *
  */
 
-package adapter
+package adapter_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/stretchr/testify/assert"
+	"go-micro.dev/v4/logger"
 )
 
 var user = domain.UserAccess{
@@ -37,7 +39,7 @@ var user = domain.UserAccess{
 }
 
 func TestMongoAdapter(t *testing.T) {
-	adapter := NewMongoUserAdapter("mongodb://localhost:27017")
+	adapter := adapter.NewMongoUserAdapter("mongodb://localhost:27017")
 
 	t.Run("save user with timeout", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 0*time.Second)
@@ -122,5 +124,7 @@ func TestMongoAdapter(t *testing.T) {
 		assert.Equal(t, "BRuh", u.AccessToken)
 	})
 
-	adapter.DeleteUser(context.Background(), "mock")
+	if err := adapter.DeleteUser(context.Background(), "mock"); err != nil {
+		logger.Fatal(err.Error())
+	}
 }

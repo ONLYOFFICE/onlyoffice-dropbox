@@ -56,5 +56,9 @@ func (u UserDeleteHandler) DeleteUser(ctx context.Context, uid *string, res *int
 		return nil, nil
 	})
 
-	return err
+	if err != nil {
+		return fmt.Errorf("user deletion error: %w", err)
+	}
+
+	return nil
 }

@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/google/uuid v1.3.0
 	github.com/kamva/mgm/v3 v3.5.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sethvargo/go-envconfig v0.9.0
@@ -64,7 +65,6 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gookit/event v1.0.6 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/hashicorp/consul/api v1.9.0 // indirect

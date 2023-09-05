@@ -38,7 +38,9 @@ func NewSessionMiddleware(
 func (m SessionMiddleware) saveRedirectURL(rw http.ResponseWriter, r *http.Request) {
 	session, _ := m.store.Get(r, "url")
 	session.Values["redirect"] = m.onlyoffice.Onlyoffice.Builder.GatewayURL + r.URL.String()
-	session.Save(r, rw)
+	if err := session.Save(r, rw); err != nil {
+		m.logger.Warn("could not save session")
+	}
 }
 
 func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
@@ -54,7 +56,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if !ok {
 			m.logger.Debug("could not cast token to string")
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
 			m.saveRedirectURL(rw, r)
 			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
@@ -64,7 +68,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if err := m.jwtManager.Verify(m.credentials.ClientSecret, val, &token); err != nil {
 			m.logger.Debugf("could not verify session token: %s", err.Error())
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
 			m.saveRedirectURL(rw, r)
 			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
@@ -72,7 +78,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 
 		if token["jti"] == "" {
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
 			m.saveRedirectURL(rw, r)
 			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return

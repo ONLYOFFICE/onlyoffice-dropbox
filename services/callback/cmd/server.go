@@ -19,6 +19,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/callback/web"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/callback/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
@@ -35,28 +37,29 @@ func Server() *cli.Command {
 		Category: "server",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "config_path",
-				Usage:   "sets custom configuration path",
-				Aliases: []string{"config", "conf", "c"},
+				Category: "configuration",
+				Name:     "config_path",
+				Usage:    "sets custom configuration path",
+				Aliases:  []string{"config", "conf", "c"},
 			},
 		},
 		Action: func(c *cli.Context) error {
 			var (
-				CONFIG_PATH = c.String("config_path")
+				configPath = c.String("config_path")
 			)
 
 			app := pkg.NewBootstrapper(
-				CONFIG_PATH, pkg.WithModules(
+				configPath, pkg.WithModules(
 					chttp.NewService, web.NewServer,
-					shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
-					shared.BuildNewIntegrationCredentialsConfig(CONFIG_PATH),
+					shared.BuildNewOnlyofficeConfig(configPath),
+					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					controller.NewCallbackController,
 					client.NewDropboxAuthClient,
 				),
 			).Bootstrap()
 
 			if err := app.Err(); err != nil {
-				return err
+				return fmt.Errorf("could not bootstrap an http server: %w", err)
 			}
 
 			app.Run()

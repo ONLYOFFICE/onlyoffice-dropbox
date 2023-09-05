@@ -80,7 +80,9 @@ func (c AuthController) getRedirectURL(rw http.ResponseWriter, r *http.Request) 
 	}
 
 	session.Options.MaxAge = -1
-	session.Save(r, rw)
+	if err := session.Save(r, rw); err != nil {
+		c.logger.Warnf("could not save a cookie session: %w", err)
+	}
 
 	return url
 }
@@ -146,7 +148,9 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		session, err := c.store.Get(r, "auth-installation")
 		if err != nil {
 			c.logger.Debugf("could not get session store: %s", err.Error())
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -168,23 +172,30 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 			session.Options.MaxAge = -1
 			if err := session.Save(r, rw); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("could not save a cookie session: %w", err)
 			}
 
 			t, err := c.oauth.Exchange(tctx, code, oauth2.SetAuthURLParam("code_verifier", vefifier))
+			if err != nil {
+				return nil, fmt.Errorf("could not exchange oauth tokens: %w", err)
+			}
 
-			return t, err
+			return t, nil
 		})
 
 		t, ok := token.(*oauth2.Token)
 		if err != nil || !ok {
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
 		usr, err := c.api.GetUser(tctx, t.AccessToken)
 		if err != nil {
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -202,7 +213,9 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			},
 		), &resp, client.WithRetries(3)); err != nil {
 			c.logger.Errorf("could not insert a new user: %s", err.Error())
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -215,7 +228,9 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 		if err != nil {
 			c.logger.Errorf("could not issue a new jwt: %s", err.Error())
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -223,7 +238,9 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		session.Options.MaxAge = 60 * 60 * 24
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Errorf("could not save current session: %s", err.Error())
-			embeddable.InstallationErrorPage.Execute(rw, errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 

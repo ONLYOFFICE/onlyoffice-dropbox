@@ -21,6 +21,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -63,7 +64,7 @@ func NewUserService(
 func (s userService) CreateUser(ctx context.Context, user domain.UserAccess) error {
 	s.logger.Debugf("validating user %s to perform a persist action", user.ID)
 	if err := user.Validate(); err != nil {
-		return err
+		return fmt.Errorf("could not validate a new user: %w", err)
 	}
 
 	var wg sync.WaitGroup
@@ -111,7 +112,7 @@ func (s userService) CreateUser(ctx context.Context, user domain.UserAccess) err
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,
 	}); err != nil {
-		return err
+		return fmt.Errorf("could not insert a new user: %w", err)
 	}
 
 	return nil
@@ -146,15 +147,17 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 	if user.Validate() != nil {
 		user, err = s.adapter.SelectUser(ctx, id)
 		if err != nil {
-			return user, err
+			return user, fmt.Errorf("could not select user: %w", err)
 		}
 
 		exp, err := time.Parse(time.RFC3339, user.Expiry)
 		if err != nil {
-			return user, err
+			return user, fmt.Errorf("could not parse user expiration: %w", err)
 		}
 
-		s.cache.Put(ctx, id, user, time.Duration((exp.UnixMilli()-10)*1e6/6))
+		if err := s.cache.Put(ctx, id, user, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
+			s.logger.Warnf("could not put user to the cache: %w", err)
+		}
 	}
 
 	s.logger.Debugf("found a user: %v", user)
@@ -201,7 +204,7 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (domain.UserAccess, error) {
 	s.logger.Debugf("validating user %s to perform an update action", user.ID)
 	if err := user.Validate(); err != nil {
-		return domain.UserAccess{}, err
+		return domain.UserAccess{}, fmt.Errorf("could not validate a user: %w", err)
 	}
 
 	var wg sync.WaitGroup
@@ -249,17 +252,19 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 
 	exp, err := time.Parse(time.RFC3339, user.Expiry)
 	if err != nil {
-		return user, err
+		return user, fmt.Errorf("could not parse user expiration: %w", err)
 	}
 
 	if err := s.cache.Put(ctx, euser.ID, euser, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
 		s.logger.Warnf("could not populate cache with a user %s instance: %s", euser.ID, err.Error())
-		s.cache.Delete(ctx, euser.ID)
+		if err := s.cache.Delete(ctx, euser.ID); err != nil {
+			s.logger.Warnf("could not remove user from the cache: %w", err)
+		}
 	}
 
 	s.logger.Debugf("user %s is valid to perform an update action", user.ID)
 	if _, err := s.adapter.UpsertUser(ctx, euser); err != nil {
-		return user, err
+		return user, fmt.Errorf("could not upsert a user: %w", err)
 	}
 
 	return user, nil
@@ -278,7 +283,7 @@ func (s userService) RemoveUser(ctx context.Context, uid string) error {
 
 	if _, _, err := s.cache.Get(ctx, uid); err == nil {
 		if err := s.cache.Delete(ctx, uid); err != nil {
-			return err
+			return fmt.Errorf("could not remove an entry from the cache: %w", err)
 		}
 	}
 

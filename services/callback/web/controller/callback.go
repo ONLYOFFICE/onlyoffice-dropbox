@@ -78,9 +78,11 @@ func NewCallbackController(
 func (c CallbackController) sendErrorResponse(errorText string, rw http.ResponseWriter) {
 	c.logger.Error(errorText)
 	rw.WriteHeader(http.StatusBadRequest)
-	rw.Write(response.CallbackResponse{
+	if _, err := rw.Write(response.CallbackResponse{
 		Error: 1,
-	}.ToJSON())
+	}.ToJSON()); err != nil {
+		c.logger.Errorf("could not send a response: %w", err)
+	}
 }
 
 func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
@@ -213,8 +215,10 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 		}
 
 		rw.WriteHeader(http.StatusOK)
-		rw.Write(response.CallbackResponse{
+		if _, err := rw.Write(response.CallbackResponse{
 			Error: 0,
-		}.ToJSON())
+		}.ToJSON()); err != nil {
+			c.logger.Warnf("could not send a response: %w", err)
+		}
 	}
 }

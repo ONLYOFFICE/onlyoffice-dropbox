@@ -20,6 +20,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
@@ -108,5 +109,9 @@ func (u UserSelectHandler) GetUser(ctx context.Context, uid *string, res *domain
 		return nil
 	}
 
-	return err
+	if err != nil {
+		return fmt.Errorf("user fetching error: %w", err)
+	}
+
+	return nil
 }
