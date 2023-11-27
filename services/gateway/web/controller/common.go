@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	_ErrCouldNotCastValue    = errors.New("could not cast value to type")
-	_ErrSessionTokenCasting  = errors.New("could not cast a session token")
-	_ErrUserIdMatching       = errors.New("token uid and state uid do not match")
-	_ErrInvalidStateValue    = errors.New("invalid state value")
-	_ErrInvalidVerifierValue = errors.New("invalid verifier value")
-	group                    singleflight.Group
+	ErrCouldNotCastValue    = errors.New("could not cast value to type")
+	ErrSessionTokenCasting  = errors.New("could not cast a session token")
+	ErrUserIdMatching       = errors.New("token uid and state uid do not match")
+	ErrInvalidStateValue    = errors.New("invalid state value")
+	ErrInvalidVerifierValue = errors.New("invalid verifier value")
+	group                   singleflight.Group
 )

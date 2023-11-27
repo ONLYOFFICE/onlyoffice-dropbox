@@ -33,6 +33,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/mileusna/useragent"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -81,21 +82,21 @@ func NewEditorController(
 func (c EditorController) BuildEditorPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		var token jwt.MapClaims
 		if err := c.jwtManager.Verify(c.credentials.ClientSecret, r.URL.Query().Get("token"), &token); err != nil {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		fileID, ok := token["file_id"].(string)
 		if !ok {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
@@ -106,14 +107,21 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		), &ures); err != nil {
 			c.logger.Debugf("could not get user %d access info: %s", uid, err.Error())
 			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		}
 
 		var config response.ConfigResponse
 		var wg sync.WaitGroup
 		wg.Add(3)
-		errChan := make(chan error, 3)
+		errChan := make(chan error, 2)
+		downloadErrChan := make(chan error, 1)
 		userChan := make(chan response.DropboxUserResponse, 1)
 		fileChan := make(chan response.DropboxFileResponse, 1)
 		downloadChan := make(chan response.DropboxDownloadResponse, 1)
@@ -144,7 +152,7 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			defer wg.Done()
 			dres, err := c.api.GetDownloadLink(r.Context(), fileID, ures.AccessToken)
 			if err != nil {
-				errChan <- err
+				downloadErrChan <- err
 				return
 			}
 
@@ -158,13 +166,46 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		select {
 		case err := <-errChan:
 			c.logger.Errorf("could not get user/file: %s", err.Error())
-			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
+			return
+		case derr := <-downloadErrChan:
+			c.logger.Infof("could not generete a download url: %s", derr.Error())
+			user := <-userChan
+			file := <-fileChan
+			loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
+			if err := embeddable.EmailPage.Execute(rw, map[string]interface{}{
+				"titleText": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailMain",
+				}),
+				"subtitleTextOne": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailSubtitleOne",
+				}),
+				"subtitleTextTwo": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailSubtitleTwo",
+				}),
+				"footnote": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "emailFootnote",
+				}),
+				"file": file.Name,
+			}); err != nil {
+				c.logger.Errorf("could not execute an email template: %w", err)
+			}
 			return
 		case <-r.Context().Done():
 			c.logger.Warn("current request took longer than expected")
-			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			}); err != nil {
+				c.logger.Errorf("could not execute an error page template: %w", err)
+			}
 			return
 		default:
 		}
@@ -228,7 +269,9 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			fileType, err = c.fileUtil.GetFileType(ext)
 			if err != nil {
 				c.logger.Errorf("could not get file type: %s", err.Error())
-				embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+				if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg); err != nil {
+					c.logger.Errorf("could not execute an error page template: %w", err)
+				}
 				return
 			}
 
@@ -244,23 +287,30 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 				ModifyFilter:         true,
 			}
 			config.DocumentType = fileType
+			if !config.Document.Permissions.Edit {
+				config.Document.Key = uuid.NewString()
+			}
 		}
 
 		sig, err := c.jwtManager.Sign(c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret, config)
 		if err != nil {
 			c.logger.Debugf("could not sign document server config: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg); err != nil {
+				c.logger.Errorf("could not execute an error page template: %w", err)
+			}
 			return
 		}
 
 		config.Token = sig
-		embeddable.EditorPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", config.ServerURL),
 			"config":  string(config.ToJSON()),
 			"docType": config.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "cancelButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute an editor template: %w", err)
+		}
 	}
 }

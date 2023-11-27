@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/port"
@@ -41,7 +42,7 @@ func (m *memoryUserAdapter) save(user domain.UserAccess) error {
 	buffer, err := json.Marshal(user)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not marshal a new user: %w", err)
 	}
 
 	m.kvs[user.ID] = buffer
@@ -62,7 +63,7 @@ func (m *memoryUserAdapter) SelectUser(ctx context.Context, uid string) (domain.
 	}
 
 	if err := json.Unmarshal(buffer, &user); err != nil {
-		return user, err
+		return user, fmt.Errorf("could not unmarshal a user: %w", err)
 	}
 
 	return user, nil

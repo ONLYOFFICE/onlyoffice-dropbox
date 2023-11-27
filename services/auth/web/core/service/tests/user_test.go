@@ -16,7 +16,7 @@
  *
  */
 
-package service
+package service_test
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/service"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/cache"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
@@ -74,7 +75,7 @@ func (m mockAdapter) DeleteUser(ctx context.Context, uid string) error {
 }
 
 func TestUserService(t *testing.T) {
-	service := NewUserService(mockAdapter{}, mockEncryptor{}, cache.NewCache(&config.CacheConfig{}),
+	service := service.NewUserService(mockAdapter{}, mockEncryptor{}, cache.NewCache(&config.CacheConfig{}),
 		&oauth2.Config{ClientSecret: "mock"}, log.NewEmptyLogger())
 
 	t.Run("save user", func(t *testing.T) {

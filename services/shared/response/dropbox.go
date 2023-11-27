@@ -33,13 +33,14 @@ type DropboxUserName struct {
 }
 
 type DropboxFileResponse struct {
-	ID        string `json:"id"`
-	CModified string `json:"client_modified"`
-	SModified string `json:"server_modified"`
-	PathLower string `json:"path_lower"`
-	Rev       string `json:"rev"`
-	Name      string `json:"name"`
-	Size      int    `json:"size"`
+	ID          string `json:"id"`
+	CModified   string `json:"client_modified"`
+	SModified   string `json:"server_modified"`
+	PathLower   string `json:"path_lower"`
+	PathDisplay string `json:"path_display"`
+	Rev         string `json:"rev"`
+	Name        string `json:"name"`
+	Size        int    `json:"size"`
 }
 
 type DropboxDownloadResponse struct {

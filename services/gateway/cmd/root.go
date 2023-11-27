@@ -19,6 +19,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -44,5 +45,9 @@ func Run() error {
 		Commands:    GetCommands(),
 	}
 
-	return app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		return fmt.Errorf("could not run a service: %w", err)
+	}
+
+	return nil
 }

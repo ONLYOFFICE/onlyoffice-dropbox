@@ -34,7 +34,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var _ErrInvalidResponsePayload = errors.New("invalid response payload")
+var ErrInvalidResponsePayload = errors.New("invalid response payload")
 
 type DropboxClient struct {
 	client      *resty.Client
@@ -76,10 +76,11 @@ func (c DropboxClient) GetUser(ctx context.Context, token string) (response.Drop
 		SetAuthToken(token).
 		SetResult(&res).
 		Post("https://api.dropboxapi.com/2/users/get_current_account"); err != nil {
+		return res, err
 	}
 
 	if res.AccountID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -101,7 +102,7 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 	}
 
 	if res.ID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -116,11 +117,11 @@ func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) 
 		SetAuthToken(token).
 		SetResult(&res).
 		Post("https://api.dropboxapi.com/2/files/get_temporary_link"); err != nil {
-		return res, err
+		return res, fmt.Errorf("could not get dropbox temporary link: %w", err)
 	}
 
 	if res.Link == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -130,7 +131,7 @@ func (c DropboxClient) uploadFile(ctx context.Context, path, token, mode string,
 	var res response.DropboxFileResponse
 	req, err := http.NewRequest("POST", "https://content.dropboxapi.com/2/files/upload", file)
 	if err != nil {
-		return res, err
+		return res, fmt.Errorf("could not build a request: %w", err)
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -138,16 +139,16 @@ func (c DropboxClient) uploadFile(ctx context.Context, path, token, mode string,
 	req.Header.Set("Dropbox-API-Arg", fmt.Sprintf("{\"autorename\":true,\"mode\":\"%s\",\"mute\":false,\"path\":\"%s\",\"strict_conflict\":false}", mode, path))
 	resp, err := otelhttp.DefaultClient.Do(req)
 	if err != nil {
-		return res, err
+		return res, fmt.Errorf("could not send a request: %w", err)
 	}
 
 	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return res, err
+		return res, fmt.Errorf("could not decode response: %w", err)
 	}
 
 	if res.ID == "" {
-		return res, _ErrInvalidResponsePayload
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
@@ -169,7 +170,7 @@ func (c DropboxClient) SaveFileFromURL(ctx context.Context, path, url, token str
 		}).
 		SetAuthToken(token).
 		Post("https://api.dropboxapi.com/2/files/save_url"); err != nil {
-		return err
+		return fmt.Errorf("could not save dropbox file from url: %w", err)
 	}
 
 	return nil

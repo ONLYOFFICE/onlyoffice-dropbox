@@ -34,7 +34,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	cv "github.com/nirasan/go-oauth-pkce-code-verifier"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -72,30 +71,40 @@ func NewAuthController(
 	}
 }
 
+func (c AuthController) getRedirectURL(rw http.ResponseWriter, r *http.Request) string {
+	session, _ := c.store.Get(r, "url")
+	url := "https://www.dropbox.com/home"
+
+	if val, ok := session.Values["redirect"].(string); ok {
+		url = val
+	}
+
+	session.Options.MaxAge = -1
+	if err := session.Save(r, rw); err != nil {
+		c.logger.Warnf("could not save a cookie session: %w", err)
+	}
+
+	return url
+}
+
 func (c AuthController) BuildGetAuth() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		v, _ := cv.CreateCodeVerifier()
 		verifier := v.String()
 
-		session, err := c.store.Get(r, "auth-installation")
-		if err != nil {
-			c.logger.Debugf("could not get a session. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
-			return
-		}
-
+		session, _ := c.store.Get(r, "auth-installation")
 		session.Values["verifier"] = verifier
 		state, err := c.stateGenerator.GenerateState(verifier)
 		if err != nil {
 			c.logger.Debugf("could not generate a new state. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
 		session.Values["state"] = state
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Debugf("could not save session. Reason: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
@@ -118,6 +127,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 
 func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "text/html")
 		tctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
@@ -125,14 +135,22 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		code, state := strings.TrimSpace(query.Get("code")), strings.TrimSpace(query.Get("state"))
 		if code == "" || state == "" {
 			c.logger.Debug("empty auth code or state parameter")
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
+		}
+
+		errMsg := map[string]interface{}{
+			"errorMain":    "Installation Failed",
+			"errorSubtext": "Please try again or contact admin",
+			"closeButton":  "Close",
 		}
 
 		session, err := c.store.Get(r, "auth-installation")
 		if err != nil {
 			c.logger.Debugf("could not get session store: %s", err.Error())
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -140,7 +158,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			state := strings.TrimSpace(query.Get("state"))
 			if state != session.Values["state"] {
 				c.logger.Errorf("state %s doesn't match %s", state, session.Values["state"])
-				return nil, _ErrInvalidStateValue
+				return nil, ErrInvalidStateValue
 			}
 
 			c.logger.Debugf("auth state is valid: %s", state)
@@ -154,37 +172,31 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 			session.Options.MaxAge = -1
 			if err := session.Save(r, rw); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("could not save a cookie session: %w", err)
 			}
 
 			t, err := c.oauth.Exchange(tctx, code, oauth2.SetAuthURLParam("code_verifier", vefifier))
+			if err != nil {
+				return nil, fmt.Errorf("could not exchange oauth tokens: %w", err)
+			}
 
-			return t, err
+			return t, nil
 		})
 
 		t, ok := token.(*oauth2.Token)
 		if err != nil || !ok {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
 		usr, err := c.api.GetUser(tctx, t.AccessToken)
 		if err != nil {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
-		}
-
-		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		errMsg := map[string]interface{}{
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
 		}
 
 		var resp interface{}
@@ -201,17 +213,13 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			},
 		), &resp, client.WithRetries(3)); err != nil {
 			c.logger.Errorf("could not insert a new user: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
-		session, err = c.store.Get(r, "authorization")
-		if err != nil {
-			c.logger.Errorf("could not get an authorization session: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
-			return
-		}
-
+		session, _ = c.store.Get(r, "authorization")
 		tkn, err := c.jwtManager.Sign(c.oauth.ClientSecret, jwt.RegisteredClaims{
 			ID:        t.Extra("account_id").(string),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -220,7 +228,9 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 		if err != nil {
 			c.logger.Errorf("could not issue a new jwt: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
@@ -228,10 +238,12 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		session.Options.MaxAge = 60 * 60 * 24
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Errorf("could not save current session: %s", err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
+				c.logger.Errorf("could not execute an installation error template: %w", err)
+			}
 			return
 		}
 
-		http.Redirect(rw, r, "https://www.dropbox.com/home", http.StatusMovedPermanently)
+		http.Redirect(rw, r, c.getRedirectURL(rw, r), http.StatusMovedPermanently)
 	}
 }

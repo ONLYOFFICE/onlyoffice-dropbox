@@ -34,14 +34,17 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>ONLYOFFICE</title>
-  <link rel="icon" href="/static/images/{{.docType}}.ico" type="image/x-icon" />
+  <link rel="icon" href="/images/{{.docType}}.ico" type="image/x-icon" />
   <style>
     .container_button {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       height: 40px;
       width: 119px;
       padding: 12px 16px 12px 16px;
-      background-color: #2DA7DB;
-      border-radius: 3px;
+      background-color: #0061D5;
+      border-radius: 6px;
       border-width: 0;
       color: white;
       transition: all 0.2s ease-in;
@@ -79,6 +82,15 @@
       margin: 0;
       padding: 0;
     }
+
+    .buttontext {
+      margin: 0;
+      width: 100px;
+      overflow: hidden;
+      white-space: nowrap;
+      display: block;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 
@@ -92,7 +104,11 @@
         style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
         {{template "spinner"}}
       </div>
-      <button class="container_button" onclick="window.close()" style="margin-top: 2rem;">{{.cancelButton}}</button>
+      <button class="container_button" onclick="window.close()" style="margin-top: 2rem; width: 110px;">
+        <p class="buttontext">
+          {{.cancelButton}}
+        </p>
+      </button>
     </div>
   </div>
   <script type="text/javascript" src="{{ .apijs }}"></script>

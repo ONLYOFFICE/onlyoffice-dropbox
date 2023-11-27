@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/golang-jwt/jwt/v5"
@@ -16,19 +16,30 @@ type SessionMiddleware struct {
 	jwtManager  crypto.JwtManager
 	store       *sessions.CookieStore
 	credentials *oauth2.Config
+	onlyoffice  *shared.OnlyofficeConfig
 	logger      log.Logger
 }
 
 func NewSessionMiddleware(
 	jwtManager crypto.JwtManager,
 	credentials *oauth2.Config,
+	onlyoffice *shared.OnlyofficeConfig,
 	logger log.Logger,
 ) SessionMiddleware {
 	return SessionMiddleware{
 		jwtManager:  jwtManager,
 		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		credentials: credentials,
+		onlyoffice:  onlyoffice,
 		logger:      logger,
+	}
+}
+
+func (m SessionMiddleware) saveRedirectURL(rw http.ResponseWriter, r *http.Request) {
+	session, _ := m.store.Get(r, "url")
+	session.Values["redirect"] = m.onlyoffice.Onlyoffice.Builder.GatewayURL + r.URL.String()
+	if err := session.Save(r, rw); err != nil {
+		m.logger.Warn("could not save session")
 	}
 }
 
@@ -37,7 +48,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		session, err := m.store.Get(r, "authorization")
 		if err != nil {
 			m.logger.Errorf("could not get session for current user: %s", err.Error())
-			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/auth", http.StatusSeeOther)
+			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
 		}
 
@@ -45,8 +56,11 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if !ok {
 			m.logger.Debug("could not cast token to string")
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/auth", http.StatusSeeOther)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
+			m.saveRedirectURL(rw, r)
+			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
 		}
 
@@ -54,15 +68,21 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if err := m.jwtManager.Verify(m.credentials.ClientSecret, val, &token); err != nil {
 			m.logger.Debugf("could not verify session token: %s", err.Error())
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/auth", http.StatusSeeOther)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
+			m.saveRedirectURL(rw, r)
+			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
 		}
 
 		if token["jti"] == "" {
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/auth", http.StatusSeeOther)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Warnf("could not save a cookie session: %w", err)
+			}
+			m.saveRedirectURL(rw, r)
+			http.Redirect(rw, r.WithContext(r.Context()), "/oauth/install", http.StatusSeeOther)
 			return
 		}
 
@@ -78,7 +98,8 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 			m.logger.Debugf("refreshed current session: %s", signature)
 		}
 
-		next.ServeHTTP(rw, r.WithContext(context.WithValue(context.Background(), "authorization", token["jti"].(string))))
+		rw.Header().Set("X-User", token["jti"].(string))
+		next.ServeHTTP(rw, r)
 	}
 
 	return http.HandlerFunc(fn)

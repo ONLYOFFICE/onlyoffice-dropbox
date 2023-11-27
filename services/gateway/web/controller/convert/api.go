@@ -16,7 +16,7 @@
  *
  */
 
-package controller
+package convert
 
 import (
 	"bytes"
@@ -29,7 +29,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
@@ -39,9 +38,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
@@ -54,6 +51,7 @@ type ConvertController struct {
 	fileUtil    onlyoffice.OnlyofficeFileUtility
 	store       *sessions.CookieStore
 	server      *config.ServerConfig
+	hasher      crypto.Hasher
 	credentials *oauth2.Config
 	onlyoffice  *shared.OnlyofficeConfig
 	logger      log.Logger
@@ -61,7 +59,7 @@ type ConvertController struct {
 
 func NewConvertController(
 	client client.Client, api aclient.DropboxClient, jwtManager crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig,
+	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
 	server *config.ServerConfig, credentials *oauth2.Config, logger log.Logger,
 ) ConvertController {
 	return ConvertController{
@@ -71,143 +69,10 @@ func NewConvertController(
 		fileUtil:    fileUtil,
 		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		server:      server,
+		hasher:      hasher,
 		credentials: credentials,
 		onlyoffice:  onlyoffice,
 		logger:      logger,
-	}
-}
-
-func (c ConvertController) BuildConvertPage() http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("Content-Type", "text/html")
-		fileID := r.URL.Query().Get("file_id")
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
-			http.Redirect(rw, r, "/oauth/auth", http.StatusMovedPermanently)
-			return
-		}
-
-		tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		var ures response.UserResponse
-		if err := c.client.Call(tctx, c.client.NewRequest(
-			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
-			uid,
-		), &ures); err != nil {
-			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
-			return
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-		errChan := make(chan error, 2)
-		userChan := make(chan response.DropboxUserResponse, 1)
-		fileChan := make(chan response.DropboxFileResponse, 1)
-
-		go func() {
-			defer wg.Done()
-			uresp, err := c.api.GetUser(r.Context(), ures.AccessToken)
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			userChan <- uresp
-		}()
-
-		go func() {
-			defer wg.Done()
-			file, err := c.api.GetFile(r.Context(), fileID, ures.AccessToken)
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			fileChan <- file
-		}()
-
-		c.logger.Debug("waiting for goroutines to finish")
-		wg.Wait()
-		c.logger.Debug("goroutines have finished")
-
-		select {
-		case err := <-errChan:
-			c.logger.Errorf("could not get user/file: %s", err.Error())
-			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
-			return
-		case <-r.Context().Done():
-			c.logger.Warn("current request took longer than expected")
-			// TODO: Generic error page
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", nil)
-			return
-		default:
-		}
-
-		usr := <-userChan
-		file := <-fileChan
-		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		ext := c.fileUtil.GetFileExt(file.Name)
-		if c.fileUtil.IsExtensionEditable(ext) || c.fileUtil.IsExtensionViewOnly(ext) {
-			creq := request.ConvertActionRequest{
-				Action: "edit",
-				FileID: fileID,
-			}
-			creq.IssuedAt = jwt.NewNumericDate(time.Now())
-			creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(5 * time.Minute))
-			token, _ := c.jwtManager.Sign(c.credentials.ClientSecret, creq)
-			http.Redirect(rw, r, fmt.Sprintf("/editor?token=%s", token), http.StatusMovedPermanently)
-			return
-		}
-
-		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
-			csrf.TemplateTag: csrf.TemplateField(r),
-			"OOXML":          c.fileUtil.IsExtensionOOXMLConvertable(ext),
-			"LossEdit":       c.fileUtil.IsExtensionLossEditable(ext),
-			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openOnlyoffice",
-			}),
-			"cannotOpen": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cannotOpen",
-			}),
-			"selectAction": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "selectAction",
-			}),
-			"openView": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openView",
-			}),
-			"createOOXML": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "createOOXML",
-			}),
-			"editCopy": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "editCopy",
-			}),
-			"openEditing": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openEditing",
-			}),
-			"moreInfo": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "moreInfo",
-			}),
-			"dataRestrictions": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "dataRestrictions",
-			}),
-			"openButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openButton",
-			}),
-			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cancelButton",
-			}),
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
-		})
 	}
 }
 
@@ -271,8 +136,13 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
+	if ext == "csv" {
+		return nil, ErrCsvIsNotSupported
+	}
+
 	creq := request.ConvertRequest{
 		Async:      false,
+		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
 		Filetype:   fType,
 		Outputtype: "ooxml",
 		URL:        dres.Link,
@@ -336,8 +206,8 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 
 func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		uid, ok := r.Context().Value("authorization").(string)
-		if !ok || uid == "" {
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
 			c.logger.Errorf("authorization context has no user id")
 			rw.WriteHeader(http.StatusForbidden)
 			return

@@ -21,6 +21,7 @@ package adapter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -35,7 +36,6 @@ import (
 )
 
 var _ErrInvalidUserId error = errors.New("invalid uid format")
-var _ErrUserAlreadyExists error = errors.New("user already exists")
 
 type userAccessCollection struct {
 	mgm.DefaultModel `bson:",inline"`
@@ -62,7 +62,7 @@ func NewMongoUserAdapter(url string) port.UserAccessServiceAdapter {
 }
 
 func (m *mongoUserAdapter) save(ctx context.Context, user domain.UserAccess) error {
-	return mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+	if err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
 		u := &userAccessCollection{}
 		collection := mgm.Coll(&userAccessCollection{})
 
@@ -75,7 +75,7 @@ func (m *mongoUserAdapter) save(ctx context.Context, user domain.UserAccess) err
 				Scope:        user.Scope,
 				Expiry:       user.Expiry,
 			}); cerr != nil {
-				return cerr
+				return fmt.Errorf("could not create a new mongo document: %w", cerr)
 			}
 
 			return session.CommitTransaction(sc)
@@ -89,16 +89,20 @@ func (m *mongoUserAdapter) save(ctx context.Context, user domain.UserAccess) err
 		u.UpdatedAt = time.Now()
 
 		if err := collection.UpdateWithCtx(ctx, u); err != nil {
-			return err
+			return fmt.Errorf("could not update a mongo document: %w", err)
 		}
 
 		return session.CommitTransaction(sc)
-	})
+	}); err != nil {
+		return fmt.Errorf("could not commit a mongo transaction: %w", err)
+	}
+
+	return nil
 }
 
 func (m *mongoUserAdapter) InsertUser(ctx context.Context, user domain.UserAccess) error {
 	if err := user.Validate(); err != nil {
-		return err
+		return fmt.Errorf("could not validate a new user: %w", err)
 	}
 
 	return m.save(ctx, user)
@@ -113,6 +117,10 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 
 	user := &userAccessCollection{}
 	collection := mgm.Coll(user)
+	if err := collection.FirstWithCtx(ctx, bson.M{"uid": uid}, user); err != nil {
+		return domain.UserAccess{}, fmt.Errorf("could not find a mongo user: %w", err)
+	}
+
 	return domain.UserAccess{
 		ID:           user.UID,
 		AccessToken:  user.AccessToken,
@@ -120,12 +128,12 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 		TokenType:    user.TokenType,
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,
-	}, collection.FirstWithCtx(ctx, bson.M{"uid": uid}, user)
+	}, nil
 }
 
 func (m *mongoUserAdapter) UpsertUser(ctx context.Context, user domain.UserAccess) (domain.UserAccess, error) {
 	if err := user.Validate(); err != nil {
-		return user, err
+		return user, fmt.Errorf("could not validate a user: %w", err)
 	}
 
 	return user, m.save(ctx, user)

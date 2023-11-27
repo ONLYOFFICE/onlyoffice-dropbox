@@ -22,6 +22,8 @@ import (
 	"net/http"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	shttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -34,7 +36,7 @@ type GdriveHTTPService struct {
 	mux               *mux.Router
 	authController    controller.AuthController
 	editorController  controller.EditorController
-	convertController controller.ConvertController
+	convertController convert.ConvertController
 	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
@@ -43,7 +45,7 @@ type GdriveHTTPService struct {
 func NewServer(
 	authController controller.AuthController,
 	editorController controller.EditorController,
-	convertController controller.ConvertController,
+	convertController convert.ConvertController,
 	sessionMiddleware middleware.SessionMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
@@ -81,24 +83,22 @@ func (s *GdriveHTTPService) InitializeServer() *mux.Router {
 
 // InitializeRoutes builds all http routes.
 func (s *GdriveHTTPService) InitializeRoutes() {
-	fs := http.FileServer(http.Dir("services/gateway/static"))
-	s.mux.Handle("/static/*", http.StripPrefix("/static/", fs))
-	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache, s.sessionMiddleware.Protect)
+	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
+		csrf.Protect([]byte(s.credentials.ClientSecret)))
 
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
-	root.Use(csrf.Protect([]byte(s.credentials.ClientSecret)))
+	root.Use(s.sessionMiddleware.Protect)
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
 	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter()
-	auth.Handle("/auth", s.authController.BuildGetAuth()).Methods(http.MethodGet)
+	auth.Handle("/install", s.authController.BuildGetAuth()).Methods(http.MethodGet)
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
-	api.Use(csrf.Protect([]byte(s.credentials.ClientSecret)))
+	api.Use(s.sessionMiddleware.Protect)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
 
-	s.mux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/oauth/auth", http.StatusMovedPermanently)
-	})
+	var staticFS = http.FS(embeddable.IconFiles)
+	s.mux.NotFoundHandler = http.FileServer(staticFS)
 }
