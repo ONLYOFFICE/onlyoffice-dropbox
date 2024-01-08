@@ -24,7 +24,6 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5 // indirect
-	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -63,7 +62,6 @@ require (
 	github.com/go-micro/plugins/v4/wrapper/ratelimiter/uber v1.2.0 // indirect
 	github.com/go-micro/plugins/v4/wrapper/select/roundrobin v1.2.0 // indirect
 	github.com/go-micro/plugins/v4/wrapper/trace/opentelemetry v1.2.0 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -92,7 +90,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/miekg/dns v1.1.56 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -122,7 +119,6 @@ require (
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/streadway/amqp v1.1.0 // indirect
-	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
@@ -166,7 +162,7 @@ require (
 require (
 	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.2
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
-	github.com/go-resty/resty/v2 v2.10.0
+	github.com/go-resty/resty/v2 v2.11.0
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.2.2
