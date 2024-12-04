@@ -1,19 +1,21 @@
 namespace: "dropbox"
 name: "gateway"
-version: 0
-address: ":4044"
+version: "1.0.0"
+address: ":6044"
 repl_address: ":9999"
 debug: false
 registry:
   addresses: [""]
   type: 2
-messaging:
-  type: 1
-  addresses: [""]
-  durable: true
+cache:
+  type: 2
+  address: 127.0.0.1:6379
+  username: ""
+  password: ""
+  database: 5
 tracer:
   enable: false
-  address: ""
+  address: "http://127.0.0.1:9411/api/v2/spans"
   type: 1
 resilience:
   rate_limiter:
@@ -31,16 +33,14 @@ logger:
   level: 1
   color: true
 worker:
-  addresses: [""]
-oauth:
-  project_id: ""
+  addresses: ["0.0.0.0:6379"]
+credentials:
   client_id: ""
   client_secret: ""
-  auth_uri: ""
-  token_uri: ""
-  auth_provider_x509_cert_url: ""
-  redirect_uris: [""]
-  javascript_origins: [""]
+  redirect_url: ""
+  auth_url: "https://www.dropbox.com/oauth2/authorize"
+  token_url: "https://api.dropboxapi.com/oauth2/token"
+  scopes: [""]
 onlyoffice:
   builder:
     document_server_url: ""
@@ -49,3 +49,5 @@ onlyoffice:
     gateway_url: ""
     callback_url: ""
     allowed_downloads: 10
+  callback:
+    upload_timeout: 120
