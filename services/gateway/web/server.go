@@ -32,7 +32,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type GdriveHTTPService struct {
+type DropboxHTTPService struct {
 	mux               *mux.Router
 	authController    controller.AuthController
 	editorController  controller.EditorController
@@ -49,7 +49,7 @@ func NewServer(
 	sessionMiddleware middleware.SessionMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
-	service := GdriveHTTPService{
+	service := DropboxHTTPService{
 		mux:               mux.NewRouter(),
 		authController:    authController,
 		editorController:  editorController,
@@ -62,32 +62,33 @@ func NewServer(
 }
 
 // ApplyMiddleware useed to apply http server middlewares.
-func (s GdriveHTTPService) ApplyMiddleware(middlewares ...func(http.Handler) http.Handler) {
+func (s DropboxHTTPService) ApplyMiddleware(middlewares ...func(http.Handler) http.Handler) {
 	for _, middleware := range middlewares {
 		s.mux.Use(middleware)
 	}
 }
 
 // NewHandler returns http server engine.
-func (s GdriveHTTPService) NewHandler() interface {
+func (s DropboxHTTPService) NewHandler() interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 } {
 	return s.InitializeServer()
 }
 
 // InitializeServer sets all injected dependencies.
-func (s *GdriveHTTPService) InitializeServer() *mux.Router {
+func (s *DropboxHTTPService) InitializeServer() *mux.Router {
 	s.InitializeRoutes()
 	return s.mux
 }
 
 // InitializeRoutes builds all http routes.
-func (s *GdriveHTTPService) InitializeRoutes() {
+func (s *DropboxHTTPService) InitializeRoutes() {
 	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
 		csrf.Protect([]byte(s.credentials.ClientSecret)))
 
+	sizeMiddleware := middleware.MaxPayloadSizeMiddleware(1 * 1024 * 1024)
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
-	root.Use(s.sessionMiddleware.Protect)
+	root.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
@@ -96,7 +97,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
-	api.Use(s.sessionMiddleware.Protect)
+	api.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
 
 	var staticFS = http.FS(embeddable.IconFiles)
