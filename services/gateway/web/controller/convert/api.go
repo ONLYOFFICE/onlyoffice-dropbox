@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
@@ -42,6 +41,7 @@ import (
 	"go-micro.dev/v4/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
 )
 
 type ConvertController struct {
@@ -89,46 +89,33 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	fileChan := make(chan response.DropboxFileResponse, 1)
-	downloadChan := make(chan response.DropboxDownloadResponse, 1)
-
-	go func() {
-		defer wg.Done()
-		file, err := c.api.GetFile(uctx, fileID, ures.AccessToken)
+	var file response.DropboxFileResponse
+	var dres response.DropboxDownloadResponse
+	g, gctx := errgroup.WithContext(uctx)
+	g.Go(func() error {
+		var err error
+		file, err = c.api.GetFile(gctx, fileID, ures.AccessToken)
 		if err != nil {
-			c.logger.Errorf("could not initialize a new drive service: %s", err.Error())
-			errChan <- err
-			return
+			c.logger.Errorf("could not get file: %s", err.Error())
+			return err
 		}
+		return nil
+	})
 
-		fileChan <- file
-	}()
-
-	go func() {
-		defer wg.Done()
-		dres, err := c.api.GetDownloadLink(uctx, fileID, ures.AccessToken)
+	g.Go(func() error {
+		var err error
+		dres, err = c.api.GetDownloadLink(gctx, fileID, ures.AccessToken)
 		if err != nil {
 			c.logger.Errorf("could not get download link: %s", err.Error())
-			errChan <- err
-			return
+			return err
 		}
+		return nil
+	})
 
-		downloadChan <- dres
-	}()
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
+	if err := g.Wait(); err != nil {
 		return nil, err
-	default:
 	}
 
-	file := <-fileChan
-	dres := <-downloadChan
 	ext := c.fileUtil.GetFileExt(file.Name)
 	fType, err := c.fileUtil.GetFileType(ext)
 	if err != nil {
@@ -155,22 +142,27 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	}
 
 	creq.Token = ctok
+	reqBody, err := json.Marshal(creq)
+	if err != nil {
+		c.logger.Errorf("could not marshal convert request: %s", err.Error())
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(
 		uctx,
-		"POST",
+		http.MethodPost,
 		fmt.Sprintf("%s/ConvertService.ashx", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL),
-		bytes.NewBuffer(creq.ToJSON()),
+		bytes.NewBuffer(reqBody),
 	)
-
 	if err != nil {
-		c.logger.Errorf("could not build a conversion api request: %s", err.Error())
+		c.logger.Errorf("could not build conversion API request: %s", err.Error())
 		return nil, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 	resp, err := otelhttp.DefaultClient.Do(req)
 	if err != nil {
-		c.logger.Errorf("could not send a conversion api request: %s", err.Error())
+		c.logger.Errorf("could not send conversion API request: %s", err.Error())
 		return nil, err
 	}
 
@@ -184,7 +176,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 
 	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
 	if err != nil {
-		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
+		c.logger.Errorf("could not retrieve converted file: %s", err.Error())
 		return nil, err
 	}
 
@@ -193,7 +185,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	newPath := fmt.Sprintf("%s/%s", file.PathLower[:strings.LastIndex(file.PathLower, "/")], filename)
 	uplres, err := c.api.CreateFile(ctx, newPath, ures.AccessToken, cfile.Body)
 	if err != nil {
-		c.logger.Errorf("could not modify file %s: %s", fileID, err.Error())
+		c.logger.Errorf("could not upload converted file %s: %s", fileID, err.Error())
 		return nil, err
 	}
 
@@ -232,8 +224,7 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			return
 		}
 
-		switch creq.Action {
-		case "create":
+		if creq.Action == "create" {
 			ncreq, err := c.convertFile(r.Context(), uid, creq.FileID)
 			if err != nil {
 				rw.WriteHeader(http.StatusInternalServerError)
@@ -254,17 +245,17 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 				),
 				http.StatusMovedPermanently,
 			)
-			return
-		default:
-			http.Redirect(
-				rw, r,
-				fmt.Sprintf(
-					"/editor?token=%s",
-					token,
-				),
-				http.StatusMovedPermanently,
-			)
+
 			return
 		}
+
+		http.Redirect(
+			rw, r,
+			fmt.Sprintf(
+				"/editor?token=%s",
+				token,
+			),
+			http.StatusMovedPermanently,
+		)
 	}
 }
