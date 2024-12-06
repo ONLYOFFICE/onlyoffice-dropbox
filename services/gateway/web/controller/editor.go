@@ -179,8 +179,9 @@ func (c *EditorController) prepareDocumentConfig(
 		},
 		EditorConfig: response.EditorConfig{
 			User: response.User{
-				ID:   user.AccountID,
-				Name: user.Name.DisplayName,
+				ID:    user.AccountID,
+				Name:  user.Name.DisplayName,
+				Image: user.ProfilePicture,
 			},
 			CallbackURL: fmt.Sprintf(
 				"%s/callback?id=%s",

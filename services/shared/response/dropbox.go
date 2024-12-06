@@ -19,10 +19,11 @@
 package response
 
 type DropboxUserResponse struct {
-	AccountID string          `json:"account_id"`
-	Email     string          `json:"email"`
-	Name      DropboxUserName `json:"name"`
-	Locale    string          `json:"locale"`
+	AccountID      string          `json:"account_id"`
+	Email          string          `json:"email"`
+	Name           DropboxUserName `json:"name"`
+	Locale         string          `json:"locale"`
+	ProfilePicture string          `json:"profile_photo_url,omitempty"`
 }
 
 type DropboxUserName struct {

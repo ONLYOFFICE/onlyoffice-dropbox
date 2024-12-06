@@ -69,8 +69,9 @@ type EditorConfig struct {
 }
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Image string `json:"image,omitempty"`
 }
 
 type Customization struct {
