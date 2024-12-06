@@ -100,8 +100,14 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		c.logger.Debug("goroutines have finished")
 
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		ext := c.fileUtil.GetFileExt(file.Name)
-		if c.fileUtil.IsExtensionEditable(ext) || c.fileUtil.IsExtensionViewOnly(ext) {
+		format, supported := c.formatManager.GetFormatByName(c.formatManager.GetFileExt(file.Name))
+		if !supported {
+			c.logger.Warnf("file format is not supported: %s", format.Type)
+			c.renderErrorPage(rw)
+			return
+		}
+
+		if format.IsEditable() || format.IsViewOnly() {
 			creq := request.ConvertActionRequest{
 				Action: "edit",
 				FileID: fileID,
@@ -133,8 +139,8 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		messages := c.getLocalizedMessages(loc, messageIDs)
 		data := map[string]interface{}{
 			"CSRF":     csrf.Token(r),
-			"OOXML":    ext != "csv" && (c.fileUtil.IsExtensionOOXMLConvertable(ext) || c.fileUtil.IsExtensionLossEditable(ext)),
-			"LossEdit": c.fileUtil.IsExtensionLossEditable(ext),
+			"OOXML":    format.Name != "csv" && (format.IsOpenXMLConvertable() || format.IsLossyEditable()),
+			"LossEdit": format.IsLossyEditable(),
 		}
 
 		for k, v := range messages {

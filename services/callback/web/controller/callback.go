@@ -21,9 +21,11 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,18 +37,18 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	plog "github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"go-micro.dev/v4/client"
 	"go-micro.dev/v4/util/backoff"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )
 
+var ErrInvalidContentLength = errors.New("content length exceeds the limit")
+
 type CallbackController struct {
 	client      client.Client
 	api         aclient.DropboxClient
 	jwtManger   crypto.JwtManager
-	fileUtil    onlyoffice.OnlyofficeFileUtility
 	server      *config.ServerConfig
 	credentials *oauth2.Config
 	onlyoffice  *shared.OnlyofficeConfig
@@ -57,7 +59,6 @@ func NewCallbackController(
 	client client.Client,
 	api aclient.DropboxClient,
 	jwtManger crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility,
 	server *config.ServerConfig,
 	credentials *oauth2.Config,
 	onlyoffice *shared.OnlyofficeConfig,
@@ -67,12 +68,34 @@ func NewCallbackController(
 		client:      client,
 		api:         api,
 		jwtManger:   jwtManger,
-		fileUtil:    fileUtil,
 		server:      server,
 		credentials: credentials,
 		onlyoffice:  onlyoffice,
 		logger:      logger,
 	}
+}
+
+func (c *CallbackController) validateFileSize(ctx context.Context, limit int64, url string) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to initialize a new head request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("failed to fetch file metadata: %w", err)
+	}
+	defer resp.Body.Close()
+
+	contentLength, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid content-length: %w", err)
+	}
+	if contentLength > limit {
+		return ErrInvalidContentLength
+	}
+
+	return nil
 }
 
 func (c CallbackController) sendErrorResponse(errorText string, rw http.ResponseWriter) {
@@ -120,7 +143,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 			)
 
 			defer cancel()
-			if err := c.fileUtil.ValidateFileSize(
+			if err := c.validateFileSize(
 				tctx, c.onlyoffice.Onlyoffice.Callback.MaxSize, body.URL,
 			); err != nil {
 				c.sendErrorResponse(fmt.Sprintf(
@@ -147,8 +170,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 				defer resp.Body.Close()
 				if resp.ContentLength > c.onlyoffice.Onlyoffice.Callback.MaxSize {
 					c.sendErrorResponse(
-						fmt.Sprintf("could not proceed with worker: %s",
-							onlyoffice.ErrInvalidContentLength.Error()), rw,
+						fmt.Sprintf("could not proceed with worker: %s", ErrInvalidContentLength.Error()), rw,
 					)
 					return
 				}

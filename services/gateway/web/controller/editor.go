@@ -30,11 +30,11 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
@@ -45,16 +45,16 @@ import (
 )
 
 type EditorController struct {
-	client      client.Client
-	api         aclient.DropboxClient
-	jwtManager  crypto.JwtManager
-	hasher      crypto.Hasher
-	fileUtil    onlyoffice.OnlyofficeFileUtility
-	store       *sessions.CookieStore
-	server      *config.ServerConfig
-	onlyoffice  *shared.OnlyofficeConfig
-	credentials *oauth2.Config
-	logger      log.Logger
+	client        client.Client
+	api           aclient.DropboxClient
+	jwtManager    crypto.JwtManager
+	hasher        crypto.Hasher
+	formatManager format.FormatManager
+	store         *sessions.CookieStore
+	server        *config.ServerConfig
+	onlyoffice    *shared.OnlyofficeConfig
+	credentials   *oauth2.Config
+	logger        log.Logger
 }
 
 func NewEditorController(
@@ -62,23 +62,23 @@ func NewEditorController(
 	api aclient.DropboxClient,
 	jwtManager crypto.JwtManager,
 	hasher crypto.Hasher,
-	fileUtil onlyoffice.OnlyofficeFileUtility,
+	formatManager format.FormatManager,
 	server *config.ServerConfig,
 	onlyoffice *shared.OnlyofficeConfig,
 	credentials *oauth2.Config,
 	logger log.Logger,
 ) EditorController {
 	return EditorController{
-		client:      client,
-		api:         api,
-		jwtManager:  jwtManager,
-		hasher:      hasher,
-		fileUtil:    fileUtil,
-		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
-		server:      server,
-		onlyoffice:  onlyoffice,
-		credentials: credentials,
-		logger:      logger,
+		client:        client,
+		api:           api,
+		jwtManager:    jwtManager,
+		hasher:        hasher,
+		formatManager: formatManager,
+		store:         sessions.NewCookieStore([]byte(credentials.ClientSecret)),
+		server:        server,
+		onlyoffice:    onlyoffice,
+		credentials:   credentials,
+		logger:        logger,
 	}
 }
 
@@ -200,15 +200,14 @@ func (c *EditorController) prepareDocumentConfig(
 	}
 
 	if strings.TrimSpace(file.Name) != "" {
-		ext := c.fileUtil.GetFileExt(file.Name)
-		fileType, err := c.fileUtil.GetFileType(ext)
-		if err != nil {
-			return config, fmt.Errorf("could not get file type: %w", err)
+		format, supported := c.formatManager.GetFormatByName(c.formatManager.GetFileExt(file.Name))
+		if !supported {
+			return config, fmt.Errorf("file type is not supported for file: %s", file.Name)
 		}
 
-		config.Document.FileType = ext
+		config.Document.FileType = format.Name
 		config.Document.Permissions = response.Permissions{
-			Edit:                 c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && token["force_edit"].(bool)),
+			Edit:                 format.IsEditable() || (format.IsLossyEditable() && token["force_edit"].(bool)),
 			Comment:              true,
 			Download:             true,
 			Print:                false,
@@ -217,10 +216,12 @@ func (c *EditorController) prepareDocumentConfig(
 			ModifyContentControl: true,
 			ModifyFilter:         true,
 		}
-		config.DocumentType = fileType
+
 		if !config.Document.Permissions.Edit {
 			config.Document.Key = uuid.NewString()
 		}
+
+		config.DocumentType = format.Type
 	}
 
 	return config, nil

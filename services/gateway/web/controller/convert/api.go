@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -30,12 +31,12 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	"go-micro.dev/v4/client"
@@ -44,35 +45,37 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var errFormatNotSupported = errors.New("current format is not supported")
+
 type ConvertController struct {
-	client      client.Client
-	api         aclient.DropboxClient
-	jwtManager  crypto.JwtManager
-	fileUtil    onlyoffice.OnlyofficeFileUtility
-	store       *sessions.CookieStore
-	server      *config.ServerConfig
-	hasher      crypto.Hasher
-	credentials *oauth2.Config
-	onlyoffice  *shared.OnlyofficeConfig
-	logger      log.Logger
+	client        client.Client
+	api           aclient.DropboxClient
+	jwtManager    crypto.JwtManager
+	formatManager format.FormatManager
+	store         *sessions.CookieStore
+	server        *config.ServerConfig
+	hasher        crypto.Hasher
+	credentials   *oauth2.Config
+	onlyoffice    *shared.OnlyofficeConfig
+	logger        log.Logger
 }
 
 func NewConvertController(
 	client client.Client, api aclient.DropboxClient, jwtManager crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
+	formatManager format.FormatManager, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
 	server *config.ServerConfig, credentials *oauth2.Config, logger log.Logger,
 ) ConvertController {
 	return ConvertController{
-		client:      client,
-		api:         api,
-		jwtManager:  jwtManager,
-		fileUtil:    fileUtil,
-		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
-		server:      server,
-		hasher:      hasher,
-		credentials: credentials,
-		onlyoffice:  onlyoffice,
-		logger:      logger,
+		client:        client,
+		api:           api,
+		jwtManager:    jwtManager,
+		formatManager: formatManager,
+		store:         sessions.NewCookieStore([]byte(credentials.ClientSecret)),
+		server:        server,
+		hasher:        hasher,
+		credentials:   credentials,
+		onlyoffice:    onlyoffice,
+		logger:        logger,
 	}
 }
 
@@ -116,21 +119,20 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
-	ext := c.fileUtil.GetFileExt(file.Name)
-	fType, err := c.fileUtil.GetFileType(ext)
-	if err != nil {
-		c.logger.Debugf("could not get file type: %s", err.Error())
-		return nil, err
+	ext := c.formatManager.GetFileExt(file.Name)
+	if ext == "" || ext == "csv" {
+		return nil, errFormatNotSupported
 	}
 
-	if ext == "csv" {
-		return nil, ErrCsvIsNotSupported
+	format, supported := c.formatManager.GetFormatByName(ext)
+	if !supported {
+		return nil, errFormatNotSupported
 	}
 
 	creq := request.ConvertRequest{
 		Async:      false,
 		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
-		Filetype:   fType,
+		Filetype:   format.Name,
 		Outputtype: "ooxml",
 		URL:        dres.Link,
 	}

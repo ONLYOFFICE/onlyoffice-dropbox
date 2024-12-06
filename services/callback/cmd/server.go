@@ -25,6 +25,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/callback/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	pkg "github.com/ONLYOFFICE/onlyoffice-integration-adapters"
 	chttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	"github.com/urfave/cli/v2"
@@ -55,6 +56,7 @@ func Server() *cli.Command {
 					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					controller.NewCallbackController,
 					client.NewDropboxAuthClient,
+					format.NewMapFormatManager,
 				),
 			).Bootstrap()
 
