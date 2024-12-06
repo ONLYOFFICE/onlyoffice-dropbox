@@ -43,6 +43,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -97,9 +98,21 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 		return nil, err
 	}
 
+	var dures response.DropboxUserResponse
 	var file response.DropboxFileResponse
 	var dres response.DropboxDownloadResponse
 	g, gctx := errgroup.WithContext(uctx)
+
+	g.Go(func() error {
+		var err error
+		dures, err = c.api.GetUser(gctx, ures.AccessToken)
+		if err != nil {
+			c.logger.Errorf("could not get user profile: %s", err.Error())
+			return err
+		}
+		return nil
+	})
+
 	g.Go(func() error {
 		var err error
 		file, err = c.api.GetFile(gctx, aRequest.FileID, ures.AccessToken)
@@ -139,6 +152,12 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 		outputType = aRequest.XmlType
 	}
 
+	tag, err := language.Parse(dures.Locale)
+	if err != nil {
+		return nil, err
+	}
+
+	region, _ := tag.Region()
 	creq := request.ConvertRequest{
 		Async:      false,
 		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
@@ -146,6 +165,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 		Outputtype: outputType,
 		URL:        dres.Link,
 		Password:   aRequest.Password,
+		Region:     fmt.Sprintf("%s-%s", dures.Locale, region),
 	}
 	creq.IssuedAt = jwt.NewNumericDate(time.Now())
 	creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(2 * time.Minute))

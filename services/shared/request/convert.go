@@ -42,6 +42,7 @@ type ConvertRequest struct {
 	Password   string `json:"password,omitempty"`
 	URL        string `json:"url"`
 	Token      string `json:"token,omitempty"`
+	Region     string `json:"region,omitempty"`
 }
 
 func (r ConvertRequest) ToJSON() []byte {
