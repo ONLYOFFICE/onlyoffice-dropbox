@@ -23,6 +23,7 @@ import "encoding/json"
 type ConvertResponse struct {
 	FileURL  string `json:"fileUrl"`
 	FileType string `json:"fileType"`
+	Error    int    `json:"error"`
 }
 
 func (r ConvertResponse) ToJSON() []byte {

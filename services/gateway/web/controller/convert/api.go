@@ -45,7 +45,12 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var errFormatNotSupported = errors.New("current format is not supported")
+var (
+	errFormatNotSupported              = errors.New("current format is not supported")
+	errConversionErrorOccurred         = errors.New("could not convert current file")
+	errConversionAutoFormatError       = errors.New("could not detect xml format automatically")
+	errConversionPasswordRequiredError = errors.New("could not convert protected file")
+)
 
 type ConvertController struct {
 	client        client.Client
@@ -79,7 +84,7 @@ func NewConvertController(
 	}
 }
 
-func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) (*request.ConvertActionRequest, error) {
+func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest request.ConvertActionRequest) (*request.ConvertActionRequest, error) {
 	uctx, cancel := context.WithTimeout(ctx, time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
 	defer cancel()
 
@@ -97,7 +102,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	g, gctx := errgroup.WithContext(uctx)
 	g.Go(func() error {
 		var err error
-		file, err = c.api.GetFile(gctx, fileID, ures.AccessToken)
+		file, err = c.api.GetFile(gctx, aRequest.FileID, ures.AccessToken)
 		if err != nil {
 			c.logger.Errorf("could not get file: %s", err.Error())
 			return err
@@ -107,7 +112,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 
 	g.Go(func() error {
 		var err error
-		dres, err = c.api.GetDownloadLink(gctx, fileID, ures.AccessToken)
+		dres, err = c.api.GetDownloadLink(gctx, aRequest.FileID, ures.AccessToken)
 		if err != nil {
 			c.logger.Errorf("could not get download link: %s", err.Error())
 			return err
@@ -129,12 +134,18 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, errFormatNotSupported
 	}
 
+	outputType := "ooxml"
+	if _, supported := c.formatManager.GetFormatByName(aRequest.XmlType); supported && aRequest.XmlType != "" {
+		outputType = aRequest.XmlType
+	}
+
 	creq := request.ConvertRequest{
 		Async:      false,
 		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
 		Filetype:   format.Name,
-		Outputtype: "ooxml",
+		Outputtype: outputType,
 		URL:        dres.Link,
+		Password:   aRequest.Password,
 	}
 	creq.IssuedAt = jwt.NewNumericDate(time.Now())
 	creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(2 * time.Minute))
@@ -176,6 +187,18 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
+	if cresp.Error == -9 {
+		return nil, errConversionAutoFormatError
+	}
+
+	if cresp.Error == -5 {
+		return nil, errConversionPasswordRequiredError
+	}
+
+	if cresp.Error < 0 {
+		return nil, errConversionErrorOccurred
+	}
+
 	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
 	if err != nil {
 		c.logger.Errorf("could not retrieve converted file: %s", err.Error())
@@ -187,7 +210,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	newPath := fmt.Sprintf("%s/%s", file.PathLower[:strings.LastIndex(file.PathLower, "/")], filename)
 	uplres, err := c.api.CreateFile(ctx, newPath, ures.AccessToken, cfile.Body)
 	if err != nil {
-		c.logger.Errorf("could not upload converted file %s: %s", fileID, err.Error())
+		c.logger.Errorf("could not upload converted file %s: %s", aRequest.FileID, err.Error())
 		return nil, err
 	}
 
@@ -227,8 +250,18 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 		}
 
 		if creq.Action == "create" {
-			ncreq, err := c.convertFile(r.Context(), uid, creq.FileID)
+			ncreq, err := c.convertFile(r.Context(), uid, creq)
 			if err != nil {
+				if errors.Is(errConversionAutoFormatError, err) {
+					rw.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
+				if errors.Is(errConversionPasswordRequiredError, err) {
+					rw.WriteHeader(http.StatusLocked)
+					return
+				}
+
 				rw.WriteHeader(http.StatusInternalServerError)
 				return
 			}

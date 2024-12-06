@@ -23,5 +23,8 @@
     "emailMain": "Obrigado por inscrever-se!",
     "emailSubtitleOne": "Antes de poder acessar",
     "emailSubtitleTwo": ", você precisa verificar seu e-mail",
-    "emailFootnote": "Por favor, verifique sua caixa de entrada"
+    "emailFootnote": "Por favor, verifique sua caixa de entrada",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

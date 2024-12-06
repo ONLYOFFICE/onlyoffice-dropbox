@@ -23,5 +23,8 @@
     "emailMain": "ご登録いただきありがとうございます！",
     "emailSubtitleOne": "アクセスする前に",
     "emailSubtitleTwo": "、メールを認証する必要があります。",
-    "emailFootnote": "受信トレイをご確認ください"
+    "emailFootnote": "受信トレイをご確認ください",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

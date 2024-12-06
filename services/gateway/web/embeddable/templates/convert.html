@@ -35,6 +35,10 @@
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        [x-cloak] {
+            display: none;
+        }
+
         html {
             margin: 0;
             padding: 0;
@@ -153,6 +157,103 @@
             border-radius: 6px;
             box-shadow: 2px 2px 22px 0px #0000000D;
         }
+
+        #file-password {
+            padding: 0.3rem 0.4rem;
+            border: 1px solid gray;
+            border-radius: 6px;
+            width: 160px;
+            white-space: nowrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .xml-type {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            width: 120px;
+            height: 40px;
+            text-align: center;
+            box-sizing: border-box;
+            font-family: 'Lato';
+            font-size: 14px;
+            border: 1px solid lightgray;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .xml-type:hover {
+            background-color: #f0f0f0;
+            border-color: gray;
+        }
+
+        .xml-type::before {
+            content: "";
+            font-size: 16px;
+        }
+
+        input[type="radio"]:checked + .xml-type {
+            background-color: #d4d4d4;
+        }
+
+        input[type="radio"]:checked + .docx {
+            background-color: #0061D5;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .xlsx {
+            background-color: #107C10;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .auto {
+            background-color: rgb(161, 160, 160);
+            color: white;
+        }
+
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .duration-300 {
+            transition-duration: 300ms;
+        }
+
+        .ease-out {
+            transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+
+        .ease-in {
+            transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+        }
+
+        .opacity-0 {
+            opacity: 0;
+        }
+
+        .opacity-100 {
+            opacity: 1;
+        }
+
+        .scale-90 {
+            transform: scale(0.9);
+        }
+
+        .scale-100 {
+            transform: scale(1);
+        }
+
+        .transform {
+            transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+        }
     </style>
 </head>
 
@@ -184,6 +285,42 @@
                                 <div style="padding-left: 1.25rem;">
                                     <span>{{.editCopy}}</span>
                                 </div>
+                                <div
+                                    x-cloak
+                                    x-show="action === 'create' && passwordRequired"
+                                    style="margin-top: .2rem; padding-left: 1.25rem;"
+                                >
+                                    <input
+                                        id="file-password"
+                                        type="password"
+                                        placeholder="{{.passwordRequired}}"
+                                        title="{{.passwordRequired}}"
+                                        x-model="password"
+                                    >
+                                </div>
+                                {{if .IsXML}}
+                                <div
+                                    x-show="action === 'create' && autoconversionFailed"
+                                    x-cloak
+                                    x-transition:enter="transition-all duration-300 ease-out"
+                                    x-transition:enter-start="opacity-0 scale-90 transform"
+                                    x-transition:enter-end="opacity-100 scale-100 transform"
+                                    x-transition:leave="transition-all duration-300 ease-in"
+                                    x-transition:leave-start="opacity-100 scale-100 transform"
+                                    x-transition:leave-end="opacity-0 scale-90 transform"
+                                >
+                                    <div style="display: flex; justify-content: space-evenly; align-items: center; margin-top: 0.5rem;">
+                                        <label>
+                                            <input type="radio" name="xmlType" value="docx" x-model="xmlType" class="hidden" />
+                                            <span class="xml-type docx">{{ .documentType }}</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="xmlType" value="xlsx" x-model="xmlType" class="hidden" />
+                                            <span class="xml-type xlsx">{{ .spreadsheetType }}</span>
+                                        </label>
+                                    </div>
+                                </div>                      
+                                {{end}}
                             </div>
                             {{end}}
                             {{if .LossEdit}}
@@ -247,15 +384,20 @@
         </div>
     </div>
     <script>
-        var token = "{{.CSRF}}";
+        const token = "{{.CSRF}}";
+        const isXML = "{{.IsXML}}";
         function convertForm() {
             document.getElementById("conversion").hidden = false;
             document.getElementById("error").hidden = false;
             return {
                 action: '',
+                autoconversionFailed: false,
+                passwordRequired: false,
+                password: '',
                 loading: false,
                 error: false,
                 tooltip: false,
+                xmlType: '',
                 showTooltip(e) {
                     this.tooltip = true;
                     const iconPosition = document.getElementById('tooltip-icon').getBoundingClientRect();
@@ -264,6 +406,9 @@
                 },
                 closeTooltip(e) {
                     this.tooltip = false;
+                },
+                changeXmlType(e) {
+                    this.xmlType = e.target.value;
                 },
                 async submit() {
                     this.loading = true;
@@ -274,6 +419,8 @@
                         const state = JSON.parse(params.state || '{}');
                         state.action = this.action;
                         state.file_id = params["file_id"];
+                        state.password = this.password;
+                        state.xml_type = this.xmlType;
                         const resp = await fetch(`/api/convert`, {
                             method: 'POST',
                             headers: {
@@ -281,6 +428,21 @@
                             },
                             body: JSON.stringify(state),
                         });
+
+                        if (resp.status === 400 && isXML === 'true') {
+                            this.autoconversionFailed = true;
+                            this.loading = false;
+                            this.error = false;
+                            return;
+                        }
+
+                        if (resp.status === 423) {
+                            this.passwordRequired = true;
+                            this.password = '';
+                            this.loading = false;
+                            this.error = false;
+                            return;
+                        }
 
                         if (resp.status >= 300) throw new Error('could not convert a file');
 

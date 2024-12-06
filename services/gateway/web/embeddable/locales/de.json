@@ -23,5 +23,8 @@
     "emailMain": "Vielen Dank für Ihre Anmeldung!",
     "emailSubtitleOne": "Bevor Sie Zugang erhalten",
     "emailSubtitleTwo": ", müssen Sie Ihre E-Mail-Adresse bestätigen",
-    "emailFootnote": "Bitte prüfen Sie Ihren Posteingang"
+    "emailFootnote": "Bitte prüfen Sie Ihren Posteingang",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

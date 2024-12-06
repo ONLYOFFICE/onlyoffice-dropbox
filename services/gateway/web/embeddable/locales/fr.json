@@ -23,5 +23,8 @@
     "emailMain": "Merci pour votre inscription !",
     "emailSubtitleOne": "Avant de pouvoir accéder",
     "emailSubtitleTwo": ", vous devez vérifier votre adresse e-mail",
-    "emailFootnote": "Veuillez consulter votre boîte de réception"
+    "emailFootnote": "Veuillez consulter votre boîte de réception",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

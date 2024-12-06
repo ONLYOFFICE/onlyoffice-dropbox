@@ -23,5 +23,8 @@
     "emailMain": "Спасибо за регистрацию!",
     "emailSubtitleOne": "Прежде чем получить доступ",
     "emailSubtitleTwo": ", вам необходимо подтвердить адрес электронной почты",
-    "emailFootnote": "Пожалуйста, проверьте электронную почту"
+    "emailFootnote": "Пожалуйста, проверьте электронную почту",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

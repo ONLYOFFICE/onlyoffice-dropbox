@@ -23,5 +23,8 @@
     "emailMain": "Thanks for signing up!",
     "emailSubtitleOne": "Before you can access",
     "emailSubtitleTwo": ", you need to verify your email",
-    "emailFootnote": "Please check your inbox"
+    "emailFootnote": "Please check your inbox",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

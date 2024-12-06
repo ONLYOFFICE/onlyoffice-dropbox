@@ -23,5 +23,8 @@
     "emailMain": "Grazie per esserti iscritto!",
     "emailSubtitleOne": "Prima di accedere",
     "emailSubtitleTwo": ", devi verificare la tua e-mail",
-    "emailFootnote": "Ti preghiamo di controllare la tua posta in arrivo"
+    "emailFootnote": "Ti preghiamo di controllare la tua posta in arrivo",
+    "documentType": "Document",
+    "spreadsheetType": "Spreadsheet",
+    "passwordRequired": "File password required"
 }

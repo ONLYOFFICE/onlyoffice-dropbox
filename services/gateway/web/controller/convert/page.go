@@ -134,12 +134,16 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			"errorMain",
 			"errorSubtext",
 			"reloadButton",
+			"documentType",
+			"spreadsheetType",
+			"passwordRequired",
 		}
 
 		messages := c.getLocalizedMessages(loc, messageIDs)
 		data := map[string]interface{}{
 			"CSRF":     csrf.Token(r),
 			"OOXML":    format.Name != "csv" && (format.IsOpenXMLConvertable() || format.IsLossyEditable()),
+			"IsXML":    format.Name == "xml",
 			"LossEdit": format.IsLossyEditable(),
 		}
 
