@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/go-resty/resty/v2"
@@ -119,6 +120,37 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 	}
 
 	c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+
+	return res, nil
+}
+
+func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) (response.DropboxFileVersionsResponse, error) {
+	var res response.DropboxFileVersionsResponse
+	cacheKey := fmt.Sprintf("history:%s", path)
+
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
+	if _, err := c.client.R().
+		SetBody(request.DropboxFileVersionsRequest{
+			Limit: 50,
+			Mode:  "path",
+			Path:  path,
+		}).
+		SetAuthToken(token).
+		SetResult(&res).
+		Post("https://api.dropboxapi.com/2/files/list_revisions"); err != nil {
+		return res, err
+	}
+
+	if len(res.Entries) > 0 {
+		c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+	}
+
+	res.SortEntries()
 
 	return res, nil
 }

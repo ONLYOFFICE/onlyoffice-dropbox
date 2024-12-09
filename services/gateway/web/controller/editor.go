@@ -314,6 +314,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 
 		config.Token = sig
 		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
+			"file":    file.ID,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", config.ServerURL),
 			"config":  string(config.ToJSON()),
 			"docType": config.DocumentType,

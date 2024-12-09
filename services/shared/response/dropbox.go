@@ -18,6 +18,11 @@
 
 package response
 
+import (
+	"sort"
+	"time"
+)
+
 type DropboxUserResponse struct {
 	AccountID      string          `json:"account_id"`
 	Email          string          `json:"email"`
@@ -42,6 +47,25 @@ type DropboxFileResponse struct {
 	Rev         string `json:"rev"`
 	Name        string `json:"name"`
 	Size        int    `json:"size"`
+}
+
+type DropboxFileVersionsResponse struct {
+	Entries []struct {
+		ClientModified string `json:"client_modified"`
+		Rev            string `json:"rev"`
+	} `json:"entries"`
+	Deleted bool `json:"is_deleted"`
+}
+
+func (r *DropboxFileVersionsResponse) SortEntries() {
+	sort.Slice(r.Entries, func(i, j int) bool {
+		timeI, errI := time.Parse(time.RFC3339, r.Entries[i].ClientModified)
+		timeJ, errJ := time.Parse(time.RFC3339, r.Entries[j].ClientModified)
+		if errI != nil || errJ != nil {
+			return i < j
+		}
+		return timeI.Before(timeJ)
+	})
 }
 
 type DropboxDownloadResponse struct {

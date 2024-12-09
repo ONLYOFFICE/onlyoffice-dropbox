@@ -35,6 +35,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <title>ONLYOFFICE</title>
   <link rel="icon" href="/images/{{.docType}}.ico" type="image/x-icon" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     .container_button {
       display: flex;
@@ -113,14 +114,29 @@
   </div>
   <script type="text/javascript" src="{{ .apijs }}"></script>
   <script type="text/javascript" language="javascript">
-    var docEditor;
+    let docEditor;
 
-    var innerAlert = function (message) {
+    document.addEventListener('alpine:init', () => {
+        Alpine.store("history", {
+            documentHistory: [{
+              currentVersion: 1,
+              history: [],
+            }],
+            async refreshHistory() {
+              const file = "{{ .file }}";
+              const response = await fetch(`/api/history?file_id=${file}`);
+              const data = await response.json();
+              this.documentHistory = data;
+            },
+        });
+    })
+
+    const innerAlert = (message) => {
       if (console && console.log)
         console.log(message);
     };
 
-    var onAppReady = function () {  // the application is loaded into the browser
+    const onAppReady = () => {  // the application is loaded into the browser
       innerAlert("Document editor ready");
       document.getElementsByClassName('container').item(0).remove();
       setTimeout(() => {
@@ -128,7 +144,7 @@
       }, 150);
     };
 
-    var onRequestClose = function () {
+    const onRequestClose = () => {
       if (window.opener) {
         window.close();
         return;
@@ -136,21 +152,44 @@
       docEditor.destroyEditor();
     };
 
-    var events = {
+    const onRequestHistory = async () => {
+      try {
+        await Alpine.store("history").refreshHistory();
+        docEditor.refreshHistory(Alpine.store("history").documentHistory);
+      } catch {
+        docEditor.refreshHistory({
+          currentVersion: 1,
+          history: [],
+        });
+      }
+    };
+
+    const onRequestHistoryData = async (event) => {
+      const version = event.data;
+      const store = Alpine.store("history");
+      const current = store.documentHistory.history.find((entry) => entry.version === version);
+      const response = await fetch(`/api/history/links?current=${current.key}&version=${version}`);
+      const data = await response.json();
+      docEditor.setHistoryData(data);
+    };
+
+    const events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
+      "onRequestHistory": onRequestHistory,
+      "onRequestHistoryData": onRequestHistoryData,
     };
 
     var config = {{ .config }};
     config["events"] = events;
 
-    var connectEditor = function () {
+    const connectEditor = function () {
       docEditor = new DocsAPI.DocEditor("iframeEditor", config);
       fixSize();
     };
 
-    var fixSize = function () {
-      var wrapEl = document.getElementsByClassName("form");
+    const fixSize = function () {
+      let wrapEl = document.getElementsByClassName("form");
       if (wrapEl.length) {
         wrapEl[0].style.height = screen.availHeight + "px";
         window.scrollTo(0, -1);

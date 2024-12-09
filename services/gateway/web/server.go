@@ -37,6 +37,7 @@ type DropboxHTTPService struct {
 	authController    controller.AuthController
 	editorController  controller.EditorController
 	convertController convert.ConvertController
+	historyController controller.HistoryController
 	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
@@ -46,6 +47,7 @@ func NewServer(
 	authController controller.AuthController,
 	editorController controller.EditorController,
 	convertController convert.ConvertController,
+	historyController controller.HistoryController,
 	sessionMiddleware middleware.SessionMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
@@ -54,6 +56,7 @@ func NewServer(
 		authController:    authController,
 		editorController:  editorController,
 		convertController: convertController,
+		historyController: historyController,
 		sessionMiddleware: sessionMiddleware,
 		credentials:       credentials,
 	}
@@ -99,6 +102,8 @@ func (s *DropboxHTTPService) InitializeRoutes() {
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
 	api.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
+	api.Handle("/history", s.historyController.BuildGetFileHistory()).Methods(http.MethodGet)
+	api.Handle("/history/links", s.historyController.BuildGetFileHistoryLinks()).Methods(http.MethodGet)
 
 	var staticFS = http.FS(embeddable.IconFiles)
 	s.mux.NotFoundHandler = http.FileServer(staticFS)

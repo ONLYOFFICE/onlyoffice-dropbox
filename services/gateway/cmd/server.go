@@ -59,6 +59,7 @@ func Server() *cli.Command {
 					controller.NewAuthController,
 					controller.NewEditorController,
 					convert.NewConvertController,
+					controller.NewHistoryController,
 					middleware.NewSessionMiddleware,
 					chttp.NewService, web.NewServer,
 					client.NewDropboxAuthClient,
