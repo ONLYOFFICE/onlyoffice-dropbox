@@ -30,6 +30,8 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/go-resty/resty/v2"
+	"github.com/mitchellh/mapstructure"
+	"go-micro.dev/v4/cache"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )
@@ -38,10 +40,12 @@ var ErrInvalidResponsePayload = errors.New("invalid response payload")
 
 type DropboxClient struct {
 	client      *resty.Client
+	cache       cache.Cache
 	credentials *oauth2.Config
 }
 
 func NewDropboxAuthClient(
+	cache cache.Cache,
 	credentials *oauth2.Config,
 ) DropboxClient {
 	otelClient := otelhttp.DefaultClient
@@ -66,6 +70,7 @@ func NewDropboxAuthClient(
 			AddRetryCondition(func(r *resty.Response, err error) bool {
 				return r.StatusCode() == http.StatusTooManyRequests
 			}),
+		cache:       cache,
 		credentials: credentials,
 	}
 }
@@ -88,6 +93,15 @@ func (c DropboxClient) GetUser(ctx context.Context, token string) (response.Drop
 
 func (c DropboxClient) GetFile(ctx context.Context, path, token string) (response.DropboxFileResponse, error) {
 	var res response.DropboxFileResponse
+	cacheKey := fmt.Sprintf("file:%s", path)
+
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			fmt.Println("CACHED")
+			return res, nil
+		}
+	}
+
 	if _, err := c.client.R().
 		SetBody(map[string]interface{}{
 			"include_deleted":                     false,
@@ -105,11 +119,21 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 		return res, ErrInvalidResponsePayload
 	}
 
+	c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+
 	return res, nil
 }
 
 func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) (response.DropboxDownloadResponse, error) {
 	var res response.DropboxDownloadResponse
+	cacheKey := fmt.Sprintf("downloadLink:%s", path)
+
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
 	if _, err := c.client.R().
 		SetBody(map[string]string{
 			"path": path,
@@ -123,6 +147,8 @@ func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) 
 	if res.Link == "" {
 		return res, ErrInvalidResponsePayload
 	}
+
+	c.cache.Put(ctx, cacheKey, res, 10*time.Second)
 
 	return res, nil
 }
