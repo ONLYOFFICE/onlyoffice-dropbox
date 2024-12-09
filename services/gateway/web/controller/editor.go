@@ -240,15 +240,29 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 			return
 		}
 
+		fid := r.URL.Query().Get("file_id")
 		var token jwt.MapClaims
 		if err := c.jwtManager.Verify(c.credentials.ClientSecret, r.URL.Query().Get("token"), &token); err != nil {
-			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
+			if fid == "" {
+				http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
+				return
+			}
+
+			http.Redirect(rw, r, fmt.Sprintf("/convert?file_id=%s", fid), http.StatusMovedPermanently)
 			return
 		}
 
 		fileID, ok := token["file_id"].(string)
 		if !ok {
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
+			return
+		}
+
+		if fileID != fid {
+			c.errorResponse(rw, embeddable.ErrorPage,
+				"Sorry, the document cannot be opened due to invalid url",
+				"Please try again",
+				"Reload")
 			return
 		}
 

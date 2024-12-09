@@ -115,7 +115,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			creq.IssuedAt = jwt.NewNumericDate(time.Now())
 			creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(5 * time.Minute))
 			token, _ := c.jwtManager.Sign(c.credentials.ClientSecret, creq)
-			http.Redirect(rw, r, fmt.Sprintf("/editor?token=%s", token), http.StatusMovedPermanently)
+			http.Redirect(rw, r, fmt.Sprintf("/editor?token=%s&file_id=%s", token, fileID), http.StatusMovedPermanently)
 			return
 		}
 

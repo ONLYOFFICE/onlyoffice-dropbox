@@ -286,6 +286,8 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 				return
 			}
 
+			ncreq.IssuedAt = jwt.NewNumericDate(time.Now())
+			ncreq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(5 * time.Minute))
 			sig, err := c.jwtManager.Sign(c.credentials.ClientSecret, ncreq)
 			if err != nil {
 				rw.WriteHeader(http.StatusInternalServerError)
@@ -295,8 +297,9 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			http.Redirect(
 				rw, r,
 				fmt.Sprintf(
-					"/editor?token=%s",
+					"/editor?token=%s&file_id=%s",
 					sig,
+					ncreq.FileID,
 				),
 				http.StatusMovedPermanently,
 			)
@@ -307,8 +310,9 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 		http.Redirect(
 			rw, r,
 			fmt.Sprintf(
-				"/editor?token=%s",
+				"/editor?token=%s&file_id=%s",
 				token,
+				creq.FileID,
 			),
 			http.StatusMovedPermanently,
 		)
