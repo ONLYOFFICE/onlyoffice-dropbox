@@ -173,11 +173,16 @@
       docEditor.setHistoryData(data);
     };
 
+    const onRequestHistoryClose = () => {
+      document.location.reload();
+    };
+
     const events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
       "onRequestHistory": onRequestHistory,
       "onRequestHistoryData": onRequestHistoryData,
+      "onRequestHistoryClose": onRequestHistoryClose,
     };
 
     var config = {{ .config }};
