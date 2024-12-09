@@ -25,6 +25,6 @@
     "emailSubtitleTwo": ", vous devez vérifier votre adresse e-mail",
     "emailFootnote": "Veuillez consulter votre boîte de réception",
     "documentType": "Document",
-    "spreadsheetType": "Spreadsheet",
-    "passwordRequired": "File password required"
+    "spreadsheetType": "Feuille de calcul",
+    "passwordRequired": "Mot de passe du fichier requis"
 }

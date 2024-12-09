@@ -24,7 +24,7 @@
     "emailSubtitleOne": "Prima di accedere",
     "emailSubtitleTwo": ", devi verificare la tua e-mail",
     "emailFootnote": "Ti preghiamo di controllare la tua posta in arrivo",
-    "documentType": "Document",
-    "spreadsheetType": "Spreadsheet",
-    "passwordRequired": "File password required"
+    "documentType": "Documento",
+    "spreadsheetType": "Foglio di calcolo",
+    "passwordRequired": "Password del file richiesta"
 }

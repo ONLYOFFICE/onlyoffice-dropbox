@@ -24,7 +24,7 @@
     "emailSubtitleOne": "Antes de poder acceder",
     "emailSubtitleTwo": ", necesita verificar su correo electrónico",
     "emailFootnote": "Por favor, compruebe su bandeja de entrada",
-    "documentType": "Document",
-    "spreadsheetType": "Spreadsheet",
-    "passwordRequired": "File password required"
+    "documentType": "Documento",
+    "spreadsheetType": "Hoja de cálculo",
+    "passwordRequired": "Se requiere contraseña para el archivo"
 }

@@ -24,7 +24,7 @@
     "emailSubtitleOne": "Прежде чем получить доступ",
     "emailSubtitleTwo": ", вам необходимо подтвердить адрес электронной почты",
     "emailFootnote": "Пожалуйста, проверьте электронную почту",
-    "documentType": "Document",
-    "spreadsheetType": "Spreadsheet",
-    "passwordRequired": "File password required"
+    "documentType": "Документ",
+    "spreadsheetType": "Электронная таблица",
+    "passwordRequired": "Требуется пароль для файла"
 }
