@@ -97,7 +97,6 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 
 	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
 		if merr := mapstructure.Decode(val, &res); merr == nil {
-			fmt.Println("CACHED")
 			return res, nil
 		}
 	}
