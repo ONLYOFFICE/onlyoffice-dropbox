@@ -1,6 +1,6 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * The MIT License (MIT)
  *
@@ -46,11 +46,12 @@
 
         .container {
             height: 100vh;
-            width: 100wv;
+            width: 100vw;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            background: #fff;
         }
 
         .container_text {
@@ -63,6 +64,7 @@
             font-size: 16px;
             line-height: 24px;
             margin-bottom: 0.2rem;
+            color: #333333;
         }
 
         .container_text_subtext {
@@ -90,7 +92,9 @@
 
         .container_actions_button:focus,
         .container_actions_button:hover {
-            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            box-shadow:
+                0 12px 16px 0 rgba(0, 0, 0, 0.24),
+                0 17px 50px 0 rgba(0, 0, 0, 0.19);
         }
 
         .buttontext {
@@ -101,11 +105,42 @@
             display: block;
             text-overflow: ellipsis;
         }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1c1c1c;
+                color: #f0f0f0;
+            }
+
+            .container {
+                background: #1c1c1c;
+            }
+
+            .container_text_main {
+                color: #f0f0f0;
+            }
+
+            .container_text_subtext {
+                color: #a0a0a0;
+            }
+
+            .container_actions_button {
+                background-color: #0e5acc;
+                color: #ffffff;
+            }
+
+            .container_actions_button:focus,
+            .container_actions_button:hover {
+                box-shadow:
+                    0 12px 16px 0 rgba(255, 255, 255, 0.1),
+                    0 17px 50px 0 rgba(255, 255, 255, 0.1);
+            }
+        }
     </style>
     <div class="container">
         <div class="container_icon">
             <svg width="273" height="273" viewBox="0 0 273 273" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="273" height="273" fill="white" />
+                <rect width="273" height="273" fill="none" />
                 <path
                     d="M67.2565 130.934V121.72C67.2565 114.721 68.6822 108.806 71.5411 103.983C74.4 99.1597 79.4733 94.4656 86.7609 89.8929C92.5469 86.2453 96.7102 82.9617 99.243 80.0345C101.776 77.1074 103.05 73.748 103.05 69.9639C103.05 66.9609 101.692 64.5873 98.9776 62.8355C96.2628 61.0838 92.7289 60.2117 88.3685 60.2117C77.5774 60.2117 64.9664 64.0337 50.5353 71.6777L35.6416 42.5198C53.4321 32.3733 72.0113 27.3 91.3715 27.3C107.304 27.3 119.809 30.8035 128.879 37.803C137.948 44.8024 142.491 54.3422 142.491 66.4149C142.491 75.0599 140.474 82.5446 136.432 88.8691C132.397 95.1936 125.944 101.177 117.087 106.819C109.587 111.68 104.885 115.229 102.997 117.481C101.109 119.733 100.153 122.395 100.153 125.466V130.934H67.2565ZM62.6459 168.449C62.6459 161.874 64.5569 156.801 68.3788 153.229C72.2009 149.657 77.8277 147.867 85.2593 147.867C92.4029 147.867 97.8856 149.672 101.708 153.282C105.53 156.892 107.441 161.942 107.441 168.449C107.441 174.948 105.461 179.99 101.495 183.562C97.5292 187.134 92.1147 188.924 85.2593 188.924C78.1841 188.924 72.6483 187.157 68.6443 183.615C64.6479 180.074 62.6459 175.023 62.6459 168.449Z"
                     fill="#DBDBDB" />

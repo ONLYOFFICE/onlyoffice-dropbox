@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,21 @@
  *
  */
 
-package convert
+package middleware
 
-import "errors"
+import "net/http"
 
-var ErrCsvIsNotSupported = errors.New("csv is not supported")
+func MaxPayloadSizeMiddleware(limit int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if r.ContentLength > 0 {
+				if r.ContentLength > limit {
+					rw.WriteHeader(http.StatusRequestEntityTooLarge)
+					return
+				}
+			}
+
+			next.ServeHTTP(rw, r)
+		})
+	}
+}

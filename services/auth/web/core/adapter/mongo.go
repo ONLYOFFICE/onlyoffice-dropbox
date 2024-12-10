@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var _ErrInvalidUserId error = errors.New("invalid uid format")
+var errInvalidUserId error = errors.New("invalid uid format")
 
 type userAccessCollection struct {
 	mgm.DefaultModel `bson:",inline"`
@@ -112,7 +112,7 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 	uid = strings.TrimSpace(uid)
 
 	if uid == "" {
-		return domain.UserAccess{}, _ErrInvalidUserId
+		return domain.UserAccess{}, errInvalidUserId
 	}
 
 	user := &userAccessCollection{}
@@ -143,7 +143,7 @@ func (m *mongoUserAdapter) DeleteUser(ctx context.Context, uid string) error {
 	uid = strings.TrimSpace(uid)
 
 	if uid == "" {
-		return _ErrInvalidUserId
+		return errInvalidUserId
 	}
 
 	_, err := mgm.Coll(&userAccessCollection{}).DeleteMany(ctx, bson.M{"uid": bson.M{operator.Eq: uid}})

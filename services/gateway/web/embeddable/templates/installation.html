@@ -1,6 +1,6 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * The MIT License (MIT)
  *
@@ -43,13 +43,19 @@
             box-sizing: border-box;
         }
 
+        body {
+            background: #ffffff;
+            color: #333333;
+        }
+
         .container {
             height: 100vh;
-            width: 100wv;
+            width: 100vw;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            background: #ffffff;
         }
 
         .container_text {
@@ -62,6 +68,7 @@
             font-size: 16px;
             line-height: 24px;
             margin-bottom: 0.2rem;
+            color: #333333;
         }
 
         .container_text_subtext {
@@ -89,7 +96,8 @@
 
         .container_actions_button:focus,
         .container_actions_button:hover {
-            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
+                        0 17px 50px 0 rgba(0, 0, 0, 0.19);
         }
 
         .buttontext {
@@ -100,11 +108,42 @@
             display: block;
             text-overflow: ellipsis;
         }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                background: #1c1c1c;
+                color: #f0f0f0;
+            }
+
+            .container {
+                background: #1c1c1c;
+            }
+
+            .container_text_main {
+                color: #f0f0f0;
+            }
+
+            .container_text_subtext {
+                color: #a0a0a0;
+            }
+
+            .container_actions_button {
+                background-color: #0e5acc;
+                color: #ffffff;
+            }
+
+            .container_actions_button:focus,
+            .container_actions_button:hover {
+                box-shadow:
+                    0 12px 16px 0 rgba(255, 255, 255, 0.1),
+                    0 17px 50px 0 rgba(255, 255, 255, 0.1);
+            }
+        }
     </style>
     <div class="container">
         <div class="container_icon">
             <svg width="284" height="285" viewBox="0 0 284 285" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="284" height="284" transform="translate(0 0.5)" fill="white" />
+                <rect width="284" height="284" transform="translate(0 0.5)" fill="none" />
                 <path
                     d="M204.35 185.909C205.015 183.13 204.394 180.598 202.962 180.255C201.53 179.913 199.829 181.888 199.164 184.667C198.498 187.447 199.119 189.978 200.551 190.321C201.984 190.664 203.684 188.689 204.35 185.909Z"
                     fill="#5C6C30" stroke="#39431E" stroke-width="2.5" stroke-miterlimit="10" />

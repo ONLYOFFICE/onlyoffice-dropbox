@@ -16,16 +16,10 @@
  *
  */
 
-package main
+package request
 
-import (
-	"log"
-
-	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/callback/cmd"
-)
-
-func main() {
-	if err := cmd.Run(); err != nil {
-		log.Fatalln(err)
-	}
+type DropboxFileVersionsRequest struct {
+	Limit int    `json:"limit"`
+	Mode  string `json:"mode"`
+	Path  string `json:"path"`
 }

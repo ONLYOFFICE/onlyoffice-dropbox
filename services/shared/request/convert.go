@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,9 @@ type ConvertActionRequest struct {
 	jwt.RegisteredClaims
 	Action    string `json:"action"`
 	FileID    string `json:"file_id"`
+	Password  string `json:"password,omitempty"`
 	ForceEdit bool   `json:"force_edit"`
+	XmlType   string `json:"xml_type,omitempty"`
 }
 
 type ConvertRequest struct {
@@ -37,8 +39,10 @@ type ConvertRequest struct {
 	Key        string `json:"key"`
 	Filetype   string `json:"filetype"`
 	Outputtype string `json:"outputtype"`
+	Password   string `json:"password,omitempty"`
 	URL        string `json:"url"`
 	Token      string `json:"token,omitempty"`
+	Region     string `json:"region,omitempty"`
 }
 
 func (r ConvertRequest) ToJSON() []byte {

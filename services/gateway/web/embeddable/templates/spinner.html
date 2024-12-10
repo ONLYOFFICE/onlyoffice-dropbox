@@ -1,6 +1,6 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * The MIT License (MIT)
  *
@@ -33,7 +33,12 @@
         height: 56px;
         width: 56px;
         box-sizing: border-box;
-        background: conic-gradient(from 90deg at 50% 50%, rgba(255, 255, 255, 0.0001) 0deg, #0061D5 359.96deg, rgba(255, 255, 255, 0.0001) 360deg);
+        background: conic-gradient(
+          from 90deg at 50% 50%,
+          rgba(255, 255, 255, 0.0001) 0deg,
+          #0061D5 359.96deg,
+          rgba(255, 255, 255, 0.0001) 360deg
+        );
         border-radius: 56px;
         animation: 1s rotate infinite linear;
     }
@@ -62,11 +67,29 @@
         0% {
             transform: rotate(0deg);
         }
-
         100% {
             transform: rotate(360deg);
         }
     }
+
+    @media (prefers-color-scheme: dark) {
+        #spinner {
+            background: conic-gradient(
+              from 90deg at 50% 50%,
+              rgba(255, 255, 255, 0.05) 0deg,
+              #0061D5 359.96deg,
+              rgba(255, 255, 255, 0.05) 360deg
+            );
+        }
+
+        #spinner::before {
+            background: #1c1c1c;
+        }
+
+        #spinner::after {
+            background: #0061D5;
+        }
+    }
 </style>
-<div id="spinner" />
+<div id="spinner"></div>
 {{end}}

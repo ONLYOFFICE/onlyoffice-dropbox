@@ -1,6 +1,6 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * The MIT License (MIT)
  *
@@ -25,7 +25,6 @@
 *-->
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -35,6 +34,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <title>ONLYOFFICE</title>
   <link rel="icon" href="/images/{{.docType}}.ico" type="image/x-icon" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     .container_button {
       display: flex;
@@ -49,29 +49,26 @@
       color: white;
       transition: all 0.2s ease-in;
       cursor: pointer;
+      position: relative;
+      z-index: 2;
     }
 
     .container_button:focus,
     .container_button:hover {
-      box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+      box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
+                  0 17px 50px 0 rgba(0, 0, 0, 0.19);
     }
 
-    html {
+    html, body {
       height: 100%;
       width: 100%;
-    }
-
-    body {
+      margin: 0;
+      padding: 0;
       background: #fff;
       color: #333;
       font-family: Arial, Tahoma, sans-serif;
       font-size: 12px;
-      font-weight: normal;
-      height: 100%;
-      margin: 0;
       overflow-y: hidden;
-      padding: 0;
-      text-decoration: none;
     }
 
     .form {
@@ -91,6 +88,24 @@
       display: block;
       text-overflow: ellipsis;
     }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #1c1c1c;
+        color: #f0f0f0;
+      }
+
+      .container_button {
+        background-color: #0e5acc;
+        color: #ffffff;
+      }
+
+      .container_button:focus,
+      .container_button:hover {
+        box-shadow: 0 12px 16px 0 rgba(255, 255, 255, 0.1),
+                    0 17px 50px 0 rgba(255, 255, 255, 0.1);
+      }
+    }
   </style>
 </head>
 
@@ -103,24 +118,37 @@
       <div
         style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
         {{template "spinner"}}
+        <button class="container_button" onclick="window.close()" style="margin-top: 2rem; width: 110px;">
+          <p class="buttontext">{{.cancelButton}}</p>
+        </button>
       </div>
-      <button class="container_button" onclick="window.close()" style="margin-top: 2rem; width: 110px;">
-        <p class="buttontext">
-          {{.cancelButton}}
-        </p>
-      </button>
     </div>
   </div>
   <script type="text/javascript" src="{{ .apijs }}"></script>
   <script type="text/javascript" language="javascript">
-    var docEditor;
+    let docEditor;
 
-    var innerAlert = function (message) {
+    document.addEventListener('alpine:init', () => {
+        Alpine.store("history", {
+            documentHistory: [{
+              currentVersion: 1,
+              history: [],
+            }],
+            async refreshHistory() {
+              const file = "{{ .file }}";
+              const response = await fetch(`/api/history?file_id=${file}`);
+              const data = await response.json();
+              this.documentHistory = data;
+            },
+        });
+    })
+
+    const innerAlert = (message) => {
       if (console && console.log)
         console.log(message);
     };
 
-    var onAppReady = function () {  // the application is loaded into the browser
+    const onAppReady = () => {
       innerAlert("Document editor ready");
       document.getElementsByClassName('container').item(0).remove();
       setTimeout(() => {
@@ -128,7 +156,7 @@
       }, 150);
     };
 
-    var onRequestClose = function () {
+    const onRequestClose = () => {
       if (window.opener) {
         window.close();
         return;
@@ -136,24 +164,50 @@
       docEditor.destroyEditor();
     };
 
-    var events = {
+    const onRequestHistory = async () => {
+      try {
+        await Alpine.store("history").refreshHistory();
+        docEditor.refreshHistory(Alpine.store("history").documentHistory);
+      } catch {
+        docEditor.refreshHistory({
+          currentVersion: 1,
+          history: [],
+        });
+      }
+    };
+
+    const onRequestHistoryData = async (event) => {
+      const version = event.data;
+      const store = Alpine.store("history");
+      const current = store.documentHistory.history.find((entry) => entry.version === version);
+      const response = await fetch(`/api/history/links?current=${current.key}&version=${version}`);
+      const data = await response.json();
+      docEditor.setHistoryData(data);
+    };
+
+    const onRequestHistoryClose = () => {
+      document.location.reload();
+    };
+
+    const events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
+      "onRequestHistory": onRequestHistory,
+      "onRequestHistoryData": onRequestHistoryData,
+      "onRequestHistoryClose": onRequestHistoryClose,
     };
 
     var config = {{ .config }};
     config["events"] = events;
 
-    var connectEditor = function () {
+    const connectEditor = function () {
       docEditor = new DocsAPI.DocEditor("iframeEditor", config);
       fixSize();
     };
 
-    var fixSize = function () {
-      var wrapEl = document.getElementsByClassName("form");
+    const fixSize = function () {
+      let wrapEl = document.getElementsByClassName("form");
       if (wrapEl.length) {
-        wrapEl[0].style.height = screen.availHeight + "px";
-        window.scrollTo(0, -1);
         wrapEl[0].style.height = window.innerHeight + "px";
       }
     };
@@ -167,5 +221,4 @@
     }
   </script>
 </body>
-
 </html>

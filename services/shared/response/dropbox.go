@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2024
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,17 @@
 
 package response
 
+import (
+	"sort"
+	"time"
+)
+
 type DropboxUserResponse struct {
-	AccountID string          `json:"account_id"`
-	Email     string          `json:"email"`
-	Name      DropboxUserName `json:"name"`
-	Locale    string          `json:"locale"`
+	AccountID      string          `json:"account_id"`
+	Email          string          `json:"email"`
+	Name           DropboxUserName `json:"name"`
+	Locale         string          `json:"locale"`
+	ProfilePicture string          `json:"profile_photo_url,omitempty"`
 }
 
 type DropboxUserName struct {
@@ -41,6 +47,25 @@ type DropboxFileResponse struct {
 	Rev         string `json:"rev"`
 	Name        string `json:"name"`
 	Size        int    `json:"size"`
+}
+
+type DropboxFileVersionsResponse struct {
+	Entries []struct {
+		ClientModified string `json:"client_modified"`
+		Rev            string `json:"rev"`
+	} `json:"entries"`
+	Deleted bool `json:"is_deleted"`
+}
+
+func (r *DropboxFileVersionsResponse) SortEntries() {
+	sort.Slice(r.Entries, func(i, j int) bool {
+		timeI, errI := time.Parse(time.RFC3339, r.Entries[i].ClientModified)
+		timeJ, errJ := time.Parse(time.RFC3339, r.Entries[j].ClientModified)
+		if errI != nil || errJ != nil {
+			return i < j
+		}
+		return timeI.Before(timeJ)
+	})
 }
 
 type DropboxDownloadResponse struct {

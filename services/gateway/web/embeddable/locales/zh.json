@@ -23,5 +23,8 @@
     "emailMain": "感谢您注册！",
     "emailSubtitleOne": "访问",
     "emailSubtitleTwo": "之前，您需要验证您的电子邮件",
-    "emailFootnote": "请查看您的收件箱"
+    "emailFootnote": "请查看您的收件箱",
+    "documentType": "文本文档",
+    "spreadsheetType": "电子表格",
+    "passwordRequired": "需要文件密码"
 }
