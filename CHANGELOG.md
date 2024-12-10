@@ -1,5 +1,17 @@
 # Change Log
 
+##
+## Added
+- user image in editor
+- file history in the editor
+- dark mode in editor
+- region in conversion calls
+- handle password protected files in conversion
+- handle convertsion output type error
+
+## Changed
+- extended list of supported formats
+
 ## 1.0.0
 ## Added
 - editing for DOCX, DOCXF, OFORM, XLSX, PPTX
