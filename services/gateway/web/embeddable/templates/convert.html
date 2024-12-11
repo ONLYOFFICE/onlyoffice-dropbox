@@ -175,22 +175,32 @@
         }
 
         .xml-type {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 93px;
+            height: 18px;
+            background: #E8E8E8;
+            border: 1px solid lightgray;
+            border-radius: 43px;
+            cursor: pointer;
+            font-family: 'Lato';
+            font-size: 10px;
+            font-weight: 600;
+            padding: 0 6px;
+            transition: background-color 0.3s, border-color 0.3s;
+            min-width: 0;
+        }
+
+        .xml-text {
+            color: #000000;
             display: inline-block;
-            width: 120px;
-            height: 40px;
-            line-height: 40px;
-            text-align: center;
+            width: 100%;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
-            font-family: 'Lato';
-            font-size: 14px;
-            border: 1px solid lightgray;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s, border-color 0.3s;
-            color: #333333;
-            padding: 0 6px;
+            text-align: center;
+            text-transform: uppercase;
         }
 
         .xml-type:hover {
@@ -200,10 +210,18 @@
 
         input[type="radio"]:checked + .xml-type {
             background-color: #d4d4d4;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .xml-type .xml-text {
+            color: white;
         }
 
         input[type="radio"]:checked + .docx {
             background-color: #0061D5;
+            color: white;
+        }
+        input[type="radio"]:checked + .docx .xml-text {
             color: white;
         }
 
@@ -212,8 +230,7 @@
             color: white;
         }
 
-        input[type="radio"]:checked + .auto {
-            background-color: rgb(161, 160, 160);
+        input[type="radio"]:checked + .xlsx .xml-text {
             color: white;
         }
 
@@ -372,17 +389,43 @@
                                     x-transition:leave-start="opacity-100 scale-100 transform"
                                     x-transition:leave-end="opacity-0 scale-90 transform"
                                 >
-                                    <div style="display: flex; justify-content: space-evenly; align-items: center; margin-top: 0.5rem;">
+                                    <div style="display: flex; margin-left: 1.25rem; margin-top: .75rem;">
+                                        <div style="display: flex; flex-shrink: 0; padding-top: .25rem;">
+                                            <svg
+                                                class="icon"
+                                                width="13"
+                                                height="13"
+                                                viewBox="0 0 13 13"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path 
+                                                    fill-rule="evenodd" 
+                                                    clip-rule="evenodd" 
+                                                    d="M6.5 12.5C9.81371 12.5 12.5 9.81371 12.5 6.5C12.5 3.18629 9.81371 0.5 6.5 0.5C3.18629 0.5 0.5 3.18629 0.5 6.5C0.5 9.81371 3.18629 12.5 6.5 12.5ZM7.5 6.5C7.5 7.05228 7.05228 7.5 6.5 7.5C5.94772 7.5 5.5 7.05228 5.5 6.5L5.5 3.5C5.5 2.94772 5.94772 2.5 6.5 2.5C7.05229 2.5 7.5 2.94772 7.5 3.5L7.5 6.5ZM6.5 10.5C7.05228 10.5 7.5 10.0523 7.5 9.5C7.5 8.94771 7.05228 8.5 6.5 8.5C5.94771 8.5 5.5 8.94771 5.5 9.5C5.5 10.0523 5.94771 10.5 6.5 10.5Z"
+                                                    fill="#0061D5"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <p class="text" style="margin-left: .25rem; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis;">
+                                            {{.xmlInformation}}
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: .75rem; margin-left: 1.25rem; margin-top: 0.5rem;">
                                         <label>
                                             <input type="radio" name="xmlType" value="docx" x-model="xmlType" class="hidden" />
-                                            <span class="xml-type docx">{{ .documentType }}</span>
+                                            <span class="xml-type docx">
+                                                <span class="xml-text">{{.documentType}}</span>
+                                            </span>
                                         </label>
                                         <label>
                                             <input type="radio" name="xmlType" value="xlsx" x-model="xmlType" class="hidden" />
-                                            <span class="xml-type xlsx">{{ .spreadsheetType }}</span>
-                                        </label>
+                                            <span class="xml-type xlsx">
+                                                <span class="xml-text">{{.spreadsheetType}}</span>
+                                            </span>
+                                        </label>                                     
                                     </div>
-                                </div>                      
+                                </div>                 
                                 {{end}}
                             </div>
                             {{end}}
