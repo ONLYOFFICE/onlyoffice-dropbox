@@ -137,6 +137,9 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			"documentType",
 			"spreadsheetType",
 			"passwordRequired",
+			"passwordInformation",
+			"passwordInvalid",
+			"xmlInformation",
 		}
 
 		messages := c.getLocalizedMessages(loc, messageIDs)

@@ -158,11 +158,16 @@
         }
 
         #file-password {
-            padding: 0.3rem 0.4rem;
-            border: 1px solid gray;
+            box-sizing: border-box;
+            width: 100%;
+            height: 32px;
+            border: 1px solid #C2C2C2;
             border-radius: 6px;
-            width: 160px;
             white-space: nowrap;
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .hidden {
@@ -353,6 +358,8 @@
                                         title="{{.passwordRequired}}"
                                         x-model="password"
                                     >
+                                    <span x-show="!passwordInvalid">{{.passwordInformation}}</span>
+                                    <span x-show="passwordInvalid" style="color: #FF0000;">{{.passwordInvalid}}</span>
                                 </div>
                                 {{if .IsXML}}
                                 <div
@@ -449,6 +456,7 @@
                 action: '',
                 autoconversionFailed: false,
                 passwordRequired: false,
+                passwordInvalid: false,
                 password: '',
                 loading: false,
                 error: false,
@@ -494,6 +502,7 @@
 
                         if (resp.status === 423) {
                             this.passwordRequired = true;
+                            this.passwordInvalid = !!this.password || this.passwordInvalid;
                             this.password = '';
                             this.loading = false;
                             this.error = false;

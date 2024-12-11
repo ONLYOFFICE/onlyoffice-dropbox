@@ -26,5 +26,8 @@
     "emailFootnote": "请查看您的收件箱",
     "documentType": "文本文档",
     "spreadsheetType": "电子表格",
-    "passwordRequired": "需要文件密码"
+    "passwordRequired": "需要文件密码",
+    "passwordInformation": "The file copy will not be password protected",
+    "passwordInvalid": "Incorrect password",
+    "xmlInformation": "Please choose the type you want open:"
 }
