@@ -26,5 +26,8 @@
     "emailFootnote": "请查看您的收件箱",
     "documentType": "文本文档",
     "spreadsheetType": "电子表格",
-    "passwordRequired": "需要文件密码"
+    "passwordRequired": "需要文件密码",
+    "passwordInformation": "文件副本将不会受到密码保护",
+    "passwordInvalid": "密码错误",
+    "xmlInformation": "请选择您想要打开的类型："
 }

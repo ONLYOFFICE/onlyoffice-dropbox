@@ -26,5 +26,8 @@
     "emailFootnote": "Bitte prüfen Sie Ihren Posteingang",
     "documentType": "Dokument",
     "spreadsheetType": "Tabellenkalkulation",
-    "passwordRequired": "Dateipasswort erforderlich"
+    "passwordRequired": "Dateipasswort erforderlich",
+    "passwordInformation": "Die Dateikopie ist nicht passwortgeschützt",
+    "passwordInvalid": "Falsches Passwort",
+    "xmlInformation": "Bitte wählen Sie den Typ, den Sie öffnen möchten:"
 }

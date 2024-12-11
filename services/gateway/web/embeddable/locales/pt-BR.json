@@ -26,5 +26,8 @@
     "emailFootnote": "Por favor, verifique sua caixa de entrada",
     "documentType": "Documento",
     "spreadsheetType": "Planilha",
-    "passwordRequired": "Senha do arquivo necessária"
+    "passwordRequired": "Senha do arquivo necessária",
+    "passwordInformation": "A cópia do arquivo não será protegida por senha",
+    "passwordInvalid": "Senha incorreta",
+    "xmlInformation": "Escolha o tipo que deseja abrir:"
 }

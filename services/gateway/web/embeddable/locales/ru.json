@@ -26,5 +26,8 @@
     "emailFootnote": "Пожалуйста, проверьте электронную почту",
     "documentType": "Документ",
     "spreadsheetType": "Электронная таблица",
-    "passwordRequired": "Требуется пароль для файла"
+    "passwordRequired": "Требуется пароль для файла",
+    "passwordInformation": "Копия файла не будет защищена паролем.",
+    "passwordInvalid": "Неправильный пароль",
+    "xmlInformation": "Пожалуйста, выберите тип, который вы хотите открыть:"
 }

@@ -26,5 +26,8 @@
     "emailFootnote": "Por favor, compruebe su bandeja de entrada",
     "documentType": "Documento",
     "spreadsheetType": "Hoja de cálculo",
-    "passwordRequired": "Se requiere contraseña para el archivo"
+    "passwordRequired": "Se requiere contraseña para el archivo",
+    "passwordInformation": "La copia del archivo no estará protegida por contraseña",
+    "passwordInvalid": "Contraseña incorrecta",
+    "xmlInformation": "Por favor, elija el tipo que desea abrir:"
 }
