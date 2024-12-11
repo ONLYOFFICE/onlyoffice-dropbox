@@ -139,6 +139,15 @@
             border-bottom: 13px solid transparent;
         }
 
+        #tooltip_info {
+            color: #000000;
+        }
+
+        #tooltip_info_link {
+            color: #000000;
+            text-decoration: underline;
+        }
+
         #tooltip_icon_svg {
             fill: #0061D5;
         }
@@ -225,6 +234,7 @@
             background-color: #0061D5;
             color: white;
         }
+
         input[type="radio"]:checked + .docx .xml-text {
             color: white;
         }
@@ -280,7 +290,7 @@
 
         @media (prefers-color-scheme: dark) {
             body {
-                background: #1c1c1c;
+                background: #1A1918;
                 color: #f0f0f0;
             }
 
@@ -288,52 +298,91 @@
                 border-top: 1px solid #555555;
             }
 
-            .text, label, span {
+            .text, label {
                 color: #f0f0f0;
             }
 
+            span {
+                color: #BBB5AE;
+            }
+
             .button_primary {
-                background-color: #0e5acc;
-                color: #ffffff;
+                background-color: #F7F5F2;
+                color: #1E1919;
+            }
+
+            .button_primary:disabled {
+                background-color: #5A5650;
             }
 
             .button_secondary {
-                background-color: #2b2b2b;
-                border: 1px solid #444444;
-                color: #ffffff;
+                border: none;
+                background-color: #FFFFFF1A;
+                color: #FFFFFF;
+            }
+
+            #tooltip {
+                background: #FFFFFF;
+                box-shadow: none;
+            }
+
+            #tooltip::before {
+                border-right: 26px solid #FFFFFF;
+            }
+
+            #tooltip_info {
+                color: #FFFFFF;
+            }
+
+            #tooltip_info_link {
+                color: #FFFFFF;
+            }
+
+            #tooltip_icon_svg {
+                fill: #D8D8D8;
             }
 
             #conversion {
-                background: #2b2b2b;
-                border: 1px solid #444444;
+                background: #2D2B29;
+                border: 1px solid #2D2B29;
                 box-shadow: none;
             }
 
             #file-password {
-                background-color: #2b2b2b;
+                background-color: #2D2B29;
                 color: #f0f0f0;
                 border: 1px solid #555555;
             }
 
             .xml-type {
-                border-color: #555555;
-                color: #f0f0f0;
+                border-color: #3c3c3c;
+                color: #E8E8E8;
             }
 
             .xml-type:hover {
-                background-color: #3c3c3c;
-                border-color: #666666;
+                background-color: #706e6e;
+                border-color: #3c3c3c;
+            }
+
+            input[type="radio"]:checked + .docx {
+                background-color: #6D9BF8;
+                color: white;
+            }
+
+            input[type="radio"]:checked + .xlsx {
+                background-color: #469D46;
+                color: white;
             }
 
             #tooltip {
-                background: #333333;
+                background: #2D2B29;
                 color: #f0f0f0;
                 box-shadow: 0 12px 16px 0 rgba(255, 255, 255, 0.1),
                             0 17px 50px 0 rgba(255, 255, 255, 0.1);
             }
 
             #tooltip::before {
-                border-right: 26px solid #333333;
+                border-right: 26px solid #2D2B29;
             }
         }
     </style>
@@ -404,10 +453,10 @@
                                                 xmlns="http://www.w3.org/2000/svg"
                                             >
                                                 <path 
+                                                    id="tooltip_icon_svg"
                                                     fill-rule="evenodd" 
                                                     clip-rule="evenodd" 
                                                     d="M6.5 12.5C9.81371 12.5 12.5 9.81371 12.5 6.5C12.5 3.18629 9.81371 0.5 6.5 0.5C3.18629 0.5 0.5 3.18629 0.5 6.5C0.5 9.81371 3.18629 12.5 6.5 12.5ZM7.5 6.5C7.5 7.05228 7.05228 7.5 6.5 7.5C5.94772 7.5 5.5 7.05228 5.5 6.5L5.5 3.5C5.5 2.94772 5.94772 2.5 6.5 2.5C7.05229 2.5 7.5 2.94772 7.5 3.5L7.5 6.5ZM6.5 10.5C7.05228 10.5 7.5 10.0523 7.5 9.5C7.5 8.94771 7.05228 8.5 6.5 8.5C5.94771 8.5 5.5 8.94771 5.5 9.5C5.5 10.0523 5.94771 10.5 6.5 10.5Z"
-                                                    fill="#0061D5"
                                                 />
                                             </svg>
                                         </div>
@@ -450,8 +499,8 @@
                                         <div id="tooltip" x-show="tooltip">
                                             <div
                                                 style="padding: 10px; display: flex; justify-content: center; align-items: center;">
-                                                <b style="color: black;">{{.moreInfo}}&nbsp;</b>
-                                                <a style="text-decoration: underline; color: black;"
+                                                <b id="tooltip_info">{{.moreInfo}}&nbsp;</b>
+                                                <a id="tooltip_info_link"
                                                     href="https://helpcenter.onlyoffice.com/faq/connectors.aspx">
                                                     https://helpcenter.onlyoffice.com/faq/connectors.aspx
                                                 </a>
