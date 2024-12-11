@@ -27,7 +27,7 @@
     "documentType": "Document",
     "spreadsheetType": "Feuille de calcul",
     "passwordRequired": "Mot de passe du fichier requis",
-    "passwordInformation": "The file copy will not be password protected",
-    "passwordInvalid": "Incorrect password",
-    "xmlInformation": "Please choose the type you want open:"
+    "passwordInformation": "La copie du fichier ne sera pas protégée par un mot de passe",
+    "passwordInvalid": "Mot de passe incorrect",
+    "xmlInformation": "Veuillez choisir le type que vous souhaitez ouvrir :"
 }

@@ -27,7 +27,7 @@
     "documentType": "Dokument",
     "spreadsheetType": "Tabellenkalkulation",
     "passwordRequired": "Dateipasswort erforderlich",
-    "passwordInformation": "The file copy will not be password protected",
-    "passwordInvalid": "Incorrect password",
-    "xmlInformation": "Please choose the type you want open:"
+    "passwordInformation": "Die Dateikopie ist nicht passwortgeschützt",
+    "passwordInvalid": "Falsches Passwort",
+    "xmlInformation": "Bitte wählen Sie den Typ, den Sie öffnen möchten:"
 }

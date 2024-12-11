@@ -27,7 +27,7 @@
     "documentType": "Документ",
     "spreadsheetType": "Электронная таблица",
     "passwordRequired": "Требуется пароль для файла",
-    "passwordInformation": "The file copy will not be password protected",
-    "passwordInvalid": "Incorrect password",
-    "xmlInformation": "Please choose the type you want open:"
+    "passwordInformation": "Копия файла не будет защищена паролем.",
+    "passwordInvalid": "Неправильный пароль",
+    "xmlInformation": "Пожалуйста, выберите тип, который вы хотите открыть:"
 }

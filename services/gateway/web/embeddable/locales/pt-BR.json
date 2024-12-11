@@ -27,7 +27,7 @@
     "documentType": "Documento",
     "spreadsheetType": "Planilha",
     "passwordRequired": "Senha do arquivo necessária",
-    "passwordInformation": "The file copy will not be password protected",
-    "passwordInvalid": "Incorrect password",
-    "xmlInformation": "Please choose the type you want open:"
+    "passwordInformation": "A cópia do arquivo não será protegida por senha",
+    "passwordInvalid": "Senha incorreta",
+    "xmlInformation": "Escolha o tipo que deseja abrir:"
 }
