@@ -57,6 +57,27 @@ type DropboxFileVersionsResponse struct {
 	Deleted bool `json:"is_deleted"`
 }
 
+func (r *DropboxFileVersionsResponse) ExcludeStale() {
+	cutoffDate := time.Now().AddDate(0, 0, -30)
+	var filtered []struct {
+		ClientModified string `json:"client_modified"`
+		Rev            string `json:"rev"`
+	}
+
+	for _, entry := range r.Entries {
+		parsedTime, err := time.Parse(time.RFC3339, entry.ClientModified)
+		if err != nil {
+			continue
+		}
+
+		if parsedTime.After(cutoffDate) {
+			filtered = append(filtered, entry)
+		}
+	}
+
+	r.Entries = filtered
+}
+
 func (r *DropboxFileVersionsResponse) SortEntries() {
 	sort.Slice(r.Entries, func(i, j int) bool {
 		timeI, errI := time.Parse(time.RFC3339, r.Entries[i].ClientModified)
