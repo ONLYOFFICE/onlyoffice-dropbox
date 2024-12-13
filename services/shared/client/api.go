@@ -137,7 +137,7 @@ func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) 
 	if _, err := c.client.R().
 		SetBody(request.DropboxFileVersionsRequest{
 			Limit: 50,
-			Mode:  "path",
+			Mode:  "id",
 			Path:  path,
 		}).
 		SetAuthToken(token).
@@ -150,6 +150,7 @@ func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) 
 		c.cache.Put(ctx, cacheKey, res, 10*time.Second)
 	}
 
+	res.ExcludeStale()
 	res.SortEntries()
 
 	return res, nil
