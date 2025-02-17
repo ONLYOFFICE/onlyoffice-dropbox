@@ -20,10 +20,8 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
@@ -34,8 +32,6 @@ import (
 	"go-micro.dev/v4/cache"
 	"golang.org/x/oauth2"
 )
-
-var errOperationTimeout = errors.New("operation timeout")
 
 type userService struct {
 	adapter     port.UserAccessServiceAdapter
@@ -67,47 +63,20 @@ func (s userService) CreateUser(ctx context.Context, user domain.UserAccess) err
 		return fmt.Errorf("could not validate a new user: %w", err)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	atokenChan := make(chan string, 1)
-	rtokenChan := make(chan string, 1)
-
-	go func() {
-		defer wg.Done()
-		aToken, err := s.encryptor.Encrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		atokenChan <- aToken
-	}()
-
-	go func() {
-		defer wg.Done()
-		rToken, err := s.encryptor.Encrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		rtokenChan <- rToken
-	}()
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
+	aToken, err := s.encryptor.Encrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
 		return err
-	case <-ctx.Done():
-		return errOperationTimeout
-	default:
+	}
+	rToken, err := s.encryptor.Encrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
+		return err
 	}
 
 	s.logger.Debugf("user %s is valid. Persisting to database: %s", user.ID, user.AccessToken)
 	if err := s.adapter.InsertUser(ctx, domain.UserAccess{
 		ID:           user.ID,
-		AccessToken:  <-atokenChan,
-		RefreshToken: <-rtokenChan,
+		AccessToken:  aToken,
+		RefreshToken: rToken,
 		TokenType:    user.TokenType,
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,
@@ -128,12 +97,6 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 			Reason: "Should not be blank",
 		}
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	atokenChan := make(chan string, 1)
-	rtokenChan := make(chan string, 1)
 
 	var user domain.UserAccess
 	var err error
@@ -162,43 +125,24 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 
 	s.logger.Debugf("found a user: %v", user)
 
-	go func() {
-		defer wg.Done()
-		aToken, err := s.encryptor.Decrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		atokenChan <- aToken
-	}()
-
-	go func() {
-		defer wg.Done()
-		rToken, err := s.encryptor.Decrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		rtokenChan <- rToken
-	}()
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
+	aToken, err := s.encryptor.Decrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
 		return domain.UserAccess{}, err
-	case <-ctx.Done():
-		return domain.UserAccess{}, errOperationTimeout
-	default:
-		return domain.UserAccess{
-			ID:           user.ID,
-			AccessToken:  <-atokenChan,
-			RefreshToken: <-rtokenChan,
-			TokenType:    user.TokenType,
-			Scope:        user.Scope,
-			Expiry:       user.Expiry,
-		}, nil
 	}
+
+	rToken, err := s.encryptor.Decrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
+		return domain.UserAccess{}, err
+	}
+
+	return domain.UserAccess{
+		ID:           user.ID,
+		AccessToken:  aToken,
+		RefreshToken: rToken,
+		TokenType:    user.TokenType,
+		Scope:        user.Scope,
+		Expiry:       user.Expiry,
+	}, nil
 }
 
 func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (domain.UserAccess, error) {
@@ -207,44 +151,19 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 		return domain.UserAccess{}, fmt.Errorf("could not validate a user: %w", err)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	atokenChan := make(chan string, 1)
-	rtokenChan := make(chan string, 1)
-
-	go func() {
-		defer wg.Done()
-		aToken, err := s.encryptor.Encrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		atokenChan <- aToken
-	}()
-
-	go func() {
-		defer wg.Done()
-		rToken, err := s.encryptor.Encrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		rtokenChan <- rToken
-	}()
-
-	select {
-	case err := <-errChan:
+	aToken, err := s.encryptor.Encrypt(user.AccessToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
 		return user, err
-	case <-ctx.Done():
-		return user, errOperationTimeout
-	default:
+	}
+	rToken, err := s.encryptor.Encrypt(user.RefreshToken, []byte(s.credentials.ClientSecret))
+	if err != nil {
+		return user, err
 	}
 
 	euser := domain.UserAccess{
 		ID:           user.ID,
-		AccessToken:  <-atokenChan,
-		RefreshToken: <-rtokenChan,
+		AccessToken:  aToken,
+		RefreshToken: rToken,
 		TokenType:    user.TokenType,
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,

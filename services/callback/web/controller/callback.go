@@ -23,11 +23,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
@@ -141,96 +139,46 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 				r.Context(),
 				time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second,
 			)
-
 			defer cancel()
-			if err := c.validateFileSize(
-				tctx, c.onlyoffice.Onlyoffice.Callback.MaxSize, body.URL,
-			); err != nil {
-				c.sendErrorResponse(fmt.Sprintf(
-					"file %s size exceeds the limit %d",
-					body.Key, c.onlyoffice.Onlyoffice.Callback.MaxSize,
-				), rw)
+
+			if err := c.validateFileSize(tctx, c.onlyoffice.Onlyoffice.Callback.MaxSize, body.URL); err != nil {
+				c.sendErrorResponse(fmt.Sprintf("could not send a head request: %s", err.Error()), rw)
 				return
 			}
 
 			usr := body.Users[0]
 			if usr != "" {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				errChan := make(chan error, 2)
-				userChan := make(chan response.UserResponse, 1)
-				fileChan := make(chan io.ReadCloser, 1)
-
-				resp, err := otelhttp.Head(tctx, body.URL)
-				if err != nil {
-					c.sendErrorResponse(fmt.Sprintf("could not send a head request: %s", err.Error()), rw)
-					return
-				}
-
-				defer resp.Body.Close()
-				if resp.ContentLength > c.onlyoffice.Onlyoffice.Callback.MaxSize {
-					c.sendErrorResponse(
-						fmt.Sprintf("could not proceed with worker: %s", ErrInvalidContentLength.Error()), rw,
-					)
-					return
-				}
-
-				go func() {
-					defer wg.Done()
-					req := c.client.NewRequest(
-						fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser", usr,
-					)
-
-					var ures response.UserResponse
-					if err := c.client.Call(tctx, req, &ures, client.WithRetries(3), client.WithBackoff(func(ctx context.Context, req client.Request, attempts int) (time.Duration, error) {
+				req := c.client.NewRequest(
+					fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser", usr,
+				)
+				var ures response.UserResponse
+				if err := c.client.Call(tctx, req, &ures,
+					client.WithRetries(3),
+					client.WithBackoff(func(ctx context.Context, req client.Request, attempts int) (time.Duration, error) {
 						return backoff.Do(attempts), nil
 					})); err != nil {
-						errChan <- err
-						return
-					}
-
-					userChan <- ures
-				}()
-
-				go func() {
-					defer wg.Done()
-					resp, err := otelhttp.Get(tctx, body.URL)
-					if err != nil {
-						errChan <- err
-						return
-					}
-
-					fileChan <- resp.Body
-				}()
-
-				select {
-				case err := <-errChan:
 					c.sendErrorResponse(fmt.Sprintf(
 						"could not process a callback request with status 2: %s", err.Error(),
 					), rw)
 					return
-				case <-tctx.Done():
-					c.sendErrorResponse("file upload has timed out", rw)
-					return
-				default:
 				}
 
-				ures := <-userChan
-				body := <-fileChan
-				defer body.Close()
-
+				respFile, err := otelhttp.Get(tctx, body.URL)
+				if err != nil {
+					c.sendErrorResponse(fmt.Sprintf(
+						"could not process a callback request with status 2: %s", err.Error(),
+					), rw)
+					return
+				}
+				defer respFile.Body.Close()
 				fl, err := c.api.GetFile(tctx, fileID, ures.AccessToken)
 				if err != nil {
-					c.sendErrorResponse(
-						fmt.Sprintf("could not get file info: %s", err.Error()), rw,
-					)
+					c.sendErrorResponse(fmt.Sprintf("could not get file info: %s", err.Error()), rw)
 					return
 				}
 
-				if _, err := c.api.UploadFile(tctx, fl.PathDisplay, ures.AccessToken, body); err != nil {
-					c.sendErrorResponse(
-						fmt.Sprintf("could not upload file changes: %s", err.Error()), rw,
-					)
+				if _, err := c.api.UploadFile(tctx, fl.PathDisplay, ures.AccessToken, respFile.Body); err != nil {
+					c.sendErrorResponse(fmt.Sprintf("could not upload file changes: %s", err.Error()), rw)
 					return
 				}
 			}

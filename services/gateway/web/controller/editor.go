@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"text/template"
 	"time"
 
@@ -42,6 +41,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
 )
 
 type EditorController struct {
@@ -106,54 +106,44 @@ func (c *EditorController) fetchDropboxData(
 	response.DropboxDownloadResponse,
 	error,
 ) {
-	var wg sync.WaitGroup
-	wg.Add(3)
+	g, ctx := errgroup.WithContext(ctx)
 
 	var user response.DropboxUserResponse
 	var file response.DropboxFileResponse
 	var download response.DropboxDownloadResponse
-	var fetchErr error
 
-	errChan := make(chan error, 3)
-
-	go func() {
-		defer wg.Done()
+	g.Go(func() error {
 		resp, err := c.api.GetUser(ctx, accessToken)
 		if err != nil {
-			errChan <- err
-			return
+			return fmt.Errorf("failed to get user data: %w", err)
 		}
 		user = resp
-	}()
+		return nil
+	})
 
-	go func() {
-		defer wg.Done()
+	g.Go(func() error {
 		resp, err := c.api.GetFile(ctx, fileID, accessToken)
 		if err != nil {
-			errChan <- err
-			return
+			return fmt.Errorf("failed to get file data: %w", err)
 		}
 		file = resp
-	}()
+		return nil
+	})
 
-	go func() {
-		defer wg.Done()
+	g.Go(func() error {
 		resp, err := c.api.GetDownloadLink(ctx, fileID, accessToken)
 		if err != nil {
-			errChan <- err
-			return
+			return fmt.Errorf("failed to get download link: %w", err)
 		}
 		download = resp
-	}()
+		return nil
+	})
 
-	wg.Wait()
-
-	select {
-	case fetchErr = <-errChan:
-		return user, file, download, fetchErr
-	default:
-		return user, file, download, nil
+	if err := g.Wait(); err != nil {
+		return user, file, download, err
 	}
+
+	return user, file, download, nil
 }
 
 func determineEditorType(userAgent string) string {
@@ -281,11 +271,19 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 
 		user, file, downloadLink, fetchErr := c.fetchDropboxData(ctx, ures.AccessToken, fileID)
 		if fetchErr != nil {
-			c.logger.Errorf("could not fetch Dropbox data: %s", fetchErr.Error())
-			c.errorResponse(rw, embeddable.ErrorPage,
-				"Sorry, the document cannot be opened",
-				"Please try again",
-				"Reload")
+			if ctx.Err() != nil {
+				c.logger.Errorf("timeout while fetching Dropbox data: %s", fetchErr.Error())
+				c.errorResponse(rw, embeddable.ErrorPage,
+					"Sorry, the request timed out",
+					"Please try again",
+					"Reload")
+			} else {
+				c.logger.Errorf("error fetching Dropbox data: %s", fetchErr.Error())
+				c.errorResponse(rw, embeddable.ErrorPage,
+					"Sorry, the document cannot be opened",
+					"Please try again",
+					"Reload")
+			}
 			return
 		}
 
