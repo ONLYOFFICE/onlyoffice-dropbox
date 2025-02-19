@@ -271,7 +271,27 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 
 		user, file, downloadLink, fetchErr := c.fetchDropboxData(ctx, ures.AccessToken, fileID)
 		if fetchErr != nil {
-			if ctx.Err() != nil {
+			if downloadLink.Link == "" {
+				loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
+				if err := embeddable.EmailPage.Execute(rw, map[string]interface{}{
+					"titleText": loc.MustLocalize(&i18n.LocalizeConfig{
+						MessageID: "emailMain",
+					}),
+					"subtitleTextOne": loc.MustLocalize(&i18n.LocalizeConfig{
+						MessageID: "emailSubtitleOne",
+					}),
+					"subtitleTextTwo": loc.MustLocalize(&i18n.LocalizeConfig{
+						MessageID: "emailSubtitleTwo",
+					}),
+					"footnote": loc.MustLocalize(&i18n.LocalizeConfig{
+						MessageID: "emailFootnote",
+					}),
+					"file": file.Name,
+				}); err != nil {
+					c.logger.Errorf("could not execute an email template: %w", err)
+				}
+				return
+			} else if ctx.Err() != nil {
 				c.logger.Errorf("timeout while fetching Dropbox data: %s", fetchErr.Error())
 				c.errorResponse(rw, embeddable.ErrorPage,
 					"Sorry, the request timed out",
