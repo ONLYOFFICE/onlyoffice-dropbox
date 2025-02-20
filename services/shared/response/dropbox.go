@@ -19,7 +19,9 @@
 package response
 
 import (
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -47,6 +49,12 @@ type DropboxFileResponse struct {
 	Rev         string `json:"rev"`
 	Name        string `json:"name"`
 	Size        int    `json:"size"`
+}
+
+func (r *DropboxFileResponse) LowerExt() {
+	ext := filepath.Ext(r.Name)
+	baseName := strings.TrimSuffix(r.Name, ext)
+	r.Name = baseName + strings.ToLower(ext)
 }
 
 type DropboxFileVersionsResponse struct {

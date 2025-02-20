@@ -307,6 +307,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 			return
 		}
 
+		file.LowerExt()
 		editorType := determineEditorType(r.UserAgent())
 		loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
 		config, configErr := c.prepareDocumentConfig(file, user, downloadLink, token, editorType)

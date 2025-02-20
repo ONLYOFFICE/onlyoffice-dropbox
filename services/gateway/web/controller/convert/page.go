@@ -99,6 +99,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 
 		c.logger.Debug("goroutines have finished")
 
+		file.LowerExt()
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 		format, supported := c.formatManager.GetFormatByName(c.formatManager.GetFileExt(file.Name))
 		if !supported {
