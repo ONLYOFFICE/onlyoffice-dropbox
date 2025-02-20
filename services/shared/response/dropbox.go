@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2024
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@
 package response
 
 import (
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -47,6 +49,12 @@ type DropboxFileResponse struct {
 	Rev         string `json:"rev"`
 	Name        string `json:"name"`
 	Size        int    `json:"size"`
+}
+
+func (r *DropboxFileResponse) LowerExt() {
+	ext := filepath.Ext(r.Name)
+	baseName := strings.TrimSuffix(r.Name, ext)
+	r.Name = baseName + strings.ToLower(ext)
 }
 
 type DropboxFileVersionsResponse struct {
