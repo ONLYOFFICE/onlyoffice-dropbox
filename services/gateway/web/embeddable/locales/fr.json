@@ -23,5 +23,11 @@
     "emailMain": "Merci pour votre inscription !",
     "emailSubtitleOne": "Avant de pouvoir accéder",
     "emailSubtitleTwo": ", vous devez vérifier votre adresse e-mail",
-    "emailFootnote": "Veuillez consulter votre boîte de réception"
+    "emailFootnote": "Veuillez consulter votre boîte de réception",
+    "documentType": "Document",
+    "spreadsheetType": "Feuille de calcul",
+    "passwordRequired": "Mot de passe du fichier requis",
+    "passwordInformation": "La copie du fichier ne sera pas protégée par un mot de passe",
+    "passwordInvalid": "Mot de passe incorrect",
+    "xmlInformation": "Veuillez choisir le type que vous souhaitez ouvrir :"
 }

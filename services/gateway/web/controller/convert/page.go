@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
@@ -31,7 +30,28 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/csrf"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"golang.org/x/sync/errgroup"
 )
+
+func (c *ConvertController) renderErrorPage(rw http.ResponseWriter) {
+	if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+		"errorMain":    "Sorry, the document cannot be opened",
+		"errorSubtext": "Please try again",
+		"reloadButton": "Reload",
+	}); err != nil {
+		c.logger.Errorf("could not execute an error template: %w", err)
+	}
+}
+
+func (c *ConvertController) getLocalizedMessages(loc *i18n.Localizer, messageIDs []string) map[string]string {
+	messages := make(map[string]string)
+	for _, id := range messageIDs {
+		messages[id] = loc.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: id,
+		})
+	}
+	return messages
+}
 
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
@@ -50,80 +70,45 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			uid,
 		), &ures); err != nil {
-			// TODO: Generic error page
-			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
-				"errorMain":    "Sorry, the document cannot be opened",
-				"errorSubtext": "Please try again",
-				"reloadButton": "Reload",
-			}); err != nil {
-				c.logger.Errorf("could not execute an error template: %w", err)
-			}
+			c.renderErrorPage(rw)
 			return
 		}
 
-		var wg sync.WaitGroup
-		wg.Add(2)
-		errChan := make(chan error, 2)
-		userChan := make(chan response.DropboxUserResponse, 1)
-		fileChan := make(chan response.DropboxFileResponse, 1)
+		g, ctx := errgroup.WithContext(r.Context())
+		var usr response.DropboxUserResponse
+		var file response.DropboxFileResponse
 
-		go func() {
-			defer wg.Done()
-			uresp, err := c.api.GetUser(r.Context(), ures.AccessToken)
-			if err != nil {
-				errChan <- err
-				return
-			}
+		g.Go(func() error {
+			var err error
+			usr, err = c.api.GetUser(ctx, ures.AccessToken)
+			return err
+		})
 
-			userChan <- uresp
-		}()
-
-		go func() {
-			defer wg.Done()
-			file, err := c.api.GetFile(r.Context(), fileID, ures.AccessToken)
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			fileChan <- file
-		}()
+		g.Go(func() error {
+			var err error
+			file, err = c.api.GetFile(ctx, fileID, ures.AccessToken)
+			return err
+		})
 
 		c.logger.Debug("waiting for goroutines to finish")
-		wg.Wait()
-		c.logger.Debug("goroutines have finished")
-
-		select {
-		case err := <-errChan:
+		if err := g.Wait(); err != nil {
 			c.logger.Errorf("could not get user/file: %s", err.Error())
-			// TODO: Generic error page
-			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
-				"errorMain":    "Sorry, the document cannot be opened",
-				"errorSubtext": "Please try again",
-				"reloadButton": "Reload",
-			}); err != nil {
-				c.logger.Errorf("could not execute an error template: %w", err)
-			}
+			c.renderErrorPage(rw)
 			return
-		case <-r.Context().Done():
-			c.logger.Warn("current request took longer than expected")
-			// TODO: Generic error page
-			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
-				"errorMain":    "Sorry, the document cannot be opened",
-				"errorSubtext": "Please try again",
-				"reloadButton": "Reload",
-			}); err != nil {
-				c.logger.Errorf("could not execute an error template: %w", err)
-			}
-			return
-		default:
 		}
 
-		usr := <-userChan
-		file := <-fileChan
+		c.logger.Debug("goroutines have finished")
+
+		file.LowerExt()
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		ext := c.fileUtil.GetFileExt(file.Name)
-		if c.fileUtil.IsExtensionEditable(ext) || c.fileUtil.IsExtensionViewOnly(ext) {
+		format, supported := c.formatManager.GetFormatByName(c.formatManager.GetFileExt(file.Name))
+		if !supported {
+			c.logger.Warnf("file format is not supported: %s", format.Type)
+			c.renderErrorPage(rw)
+			return
+		}
+
+		if format.IsEditable() || format.IsViewOnly() {
 			creq := request.ConvertActionRequest{
 				Action: "edit",
 				FileID: fileID,
@@ -131,57 +116,46 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			creq.IssuedAt = jwt.NewNumericDate(time.Now())
 			creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(5 * time.Minute))
 			token, _ := c.jwtManager.Sign(c.credentials.ClientSecret, creq)
-			http.Redirect(rw, r, fmt.Sprintf("/editor?token=%s", token), http.StatusMovedPermanently)
+			http.Redirect(rw, r, fmt.Sprintf("/editor?token=%s&file_id=%s", token, fileID), http.StatusMovedPermanently)
 			return
 		}
 
-		if err := embeddable.ConvertPage.Execute(rw, map[string]interface{}{
+		messageIDs := []string{
+			"openOnlyoffice",
+			"cannotOpen",
+			"selectAction",
+			"openView",
+			"createOOXML",
+			"editCopy",
+			"openEditing",
+			"moreInfo",
+			"dataRestrictions",
+			"openButton",
+			"cancelButton",
+			"errorMain",
+			"errorSubtext",
+			"reloadButton",
+			"documentType",
+			"spreadsheetType",
+			"passwordRequired",
+			"passwordInformation",
+			"passwordInvalid",
+			"xmlInformation",
+		}
+
+		messages := c.getLocalizedMessages(loc, messageIDs)
+		data := map[string]interface{}{
 			"CSRF":     csrf.Token(r),
-			"OOXML":    ext != "csv" && (c.fileUtil.IsExtensionOOXMLConvertable(ext) || c.fileUtil.IsExtensionLossEditable(ext)),
-			"LossEdit": c.fileUtil.IsExtensionLossEditable(ext),
-			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openOnlyoffice",
-			}),
-			"cannotOpen": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cannotOpen",
-			}),
-			"selectAction": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "selectAction",
-			}),
-			"openView": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openView",
-			}),
-			"createOOXML": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "createOOXML",
-			}),
-			"editCopy": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "editCopy",
-			}),
-			"openEditing": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openEditing",
-			}),
-			"moreInfo": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "moreInfo",
-			}),
-			"dataRestrictions": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "dataRestrictions",
-			}),
-			"openButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openButton",
-			}),
-			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cancelButton",
-			}),
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
-		}); err != nil {
+			"OOXML":    format.Name != "csv" && (format.IsOpenXMLConvertable() || format.IsLossyEditable()),
+			"IsXML":    format.Name == "xml",
+			"LossEdit": format.IsLossyEditable(),
+		}
+
+		for k, v := range messages {
+			data[k] = v
+		}
+
+		if err := embeddable.ConvertPage.Execute(rw, data); err != nil {
 			c.logger.Errorf("could not execute a convert template: %w", err)
 		}
 	}

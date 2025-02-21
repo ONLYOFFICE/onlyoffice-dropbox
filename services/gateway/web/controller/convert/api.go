@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,61 +22,70 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	"go-micro.dev/v4/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/language"
+)
+
+var (
+	errFormatNotSupported              = errors.New("current format is not supported")
+	errConversionErrorOccurred         = errors.New("could not convert current file")
+	errConversionAutoFormatError       = errors.New("could not detect xml format automatically")
+	errConversionPasswordRequiredError = errors.New("could not convert protected file")
 )
 
 type ConvertController struct {
-	client      client.Client
-	api         aclient.DropboxClient
-	jwtManager  crypto.JwtManager
-	fileUtil    onlyoffice.OnlyofficeFileUtility
-	store       *sessions.CookieStore
-	server      *config.ServerConfig
-	hasher      crypto.Hasher
-	credentials *oauth2.Config
-	onlyoffice  *shared.OnlyofficeConfig
-	logger      log.Logger
+	client        client.Client
+	api           aclient.DropboxClient
+	jwtManager    crypto.JwtManager
+	formatManager format.FormatManager
+	store         *sessions.CookieStore
+	server        *config.ServerConfig
+	hasher        crypto.Hasher
+	credentials   *oauth2.Config
+	onlyoffice    *shared.OnlyofficeConfig
+	logger        log.Logger
 }
 
 func NewConvertController(
 	client client.Client, api aclient.DropboxClient, jwtManager crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
+	formatManager format.FormatManager, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
 	server *config.ServerConfig, credentials *oauth2.Config, logger log.Logger,
 ) ConvertController {
 	return ConvertController{
-		client:      client,
-		api:         api,
-		jwtManager:  jwtManager,
-		fileUtil:    fileUtil,
-		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
-		server:      server,
-		hasher:      hasher,
-		credentials: credentials,
-		onlyoffice:  onlyoffice,
-		logger:      logger,
+		client:        client,
+		api:           api,
+		jwtManager:    jwtManager,
+		formatManager: formatManager,
+		store:         sessions.NewCookieStore([]byte(credentials.ClientSecret)),
+		server:        server,
+		hasher:        hasher,
+		credentials:   credentials,
+		onlyoffice:    onlyoffice,
+		logger:        logger,
 	}
 }
 
-func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) (*request.ConvertActionRequest, error) {
+func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest request.ConvertActionRequest) (*request.ConvertActionRequest, error) {
 	uctx, cancel := context.WithTimeout(ctx, time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
 	defer cancel()
 
@@ -89,63 +98,74 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	fileChan := make(chan response.DropboxFileResponse, 1)
-	downloadChan := make(chan response.DropboxDownloadResponse, 1)
+	var dures response.DropboxUserResponse
+	var file response.DropboxFileResponse
+	var dres response.DropboxDownloadResponse
+	g, gctx := errgroup.WithContext(uctx)
 
-	go func() {
-		defer wg.Done()
-		file, err := c.api.GetFile(uctx, fileID, ures.AccessToken)
+	g.Go(func() error {
+		var err error
+		dures, err = c.api.GetUser(gctx, ures.AccessToken)
 		if err != nil {
-			c.logger.Errorf("could not initialize a new drive service: %s", err.Error())
-			errChan <- err
-			return
+			c.logger.Errorf("could not get user profile: %s", err.Error())
+			return err
 		}
+		return nil
+	})
 
-		fileChan <- file
-	}()
+	g.Go(func() error {
+		var err error
+		file, err = c.api.GetFile(gctx, aRequest.FileID, ures.AccessToken)
+		if err != nil {
+			c.logger.Errorf("could not get file: %s", err.Error())
+			return err
+		}
+		return nil
+	})
 
-	go func() {
-		defer wg.Done()
-		dres, err := c.api.GetDownloadLink(uctx, fileID, ures.AccessToken)
+	g.Go(func() error {
+		var err error
+		dres, err = c.api.GetDownloadLink(gctx, aRequest.FileID, ures.AccessToken)
 		if err != nil {
 			c.logger.Errorf("could not get download link: %s", err.Error())
-			errChan <- err
-			return
+			return err
 		}
+		return nil
+	})
 
-		downloadChan <- dres
-	}()
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
+	if err := g.Wait(); err != nil {
 		return nil, err
-	default:
 	}
 
-	file := <-fileChan
-	dres := <-downloadChan
-	ext := c.fileUtil.GetFileExt(file.Name)
-	fType, err := c.fileUtil.GetFileType(ext)
+	ext := c.formatManager.GetFileExt(file.Name)
+	if ext == "" || ext == "csv" {
+		return nil, errFormatNotSupported
+	}
+
+	format, supported := c.formatManager.GetFormatByName(ext)
+	if !supported {
+		return nil, errFormatNotSupported
+	}
+
+	outputType := "ooxml"
+	if _, supported := c.formatManager.GetFormatByName(aRequest.XmlType); supported && aRequest.XmlType != "" {
+		outputType = aRequest.XmlType
+	}
+
+	tag, err := language.Parse(dures.Locale)
 	if err != nil {
-		c.logger.Debugf("could not get file type: %s", err.Error())
 		return nil, err
 	}
 
-	if ext == "csv" {
-		return nil, ErrCsvIsNotSupported
-	}
-
+	region, _ := tag.Region()
 	creq := request.ConvertRequest{
 		Async:      false,
 		Key:        string(c.hasher.Hash(file.CModified + file.ID + time.Now().String())),
-		Filetype:   fType,
-		Outputtype: "ooxml",
+		Filetype:   format.Name,
+		Outputtype: outputType,
 		URL:        dres.Link,
+		Password:   aRequest.Password,
+		Region:     fmt.Sprintf("%s-%s", dures.Locale, region),
 	}
 	creq.IssuedAt = jwt.NewNumericDate(time.Now())
 	creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(2 * time.Minute))
@@ -155,22 +175,27 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	}
 
 	creq.Token = ctok
+	reqBody, err := json.Marshal(creq)
+	if err != nil {
+		c.logger.Errorf("could not marshal convert request: %s", err.Error())
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(
 		uctx,
-		"POST",
-		fmt.Sprintf("%s/ConvertService.ashx", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL),
-		bytes.NewBuffer(creq.ToJSON()),
+		http.MethodPost,
+		fmt.Sprintf("%s/converter?shardKey=%s", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL, creq.Key),
+		bytes.NewBuffer(reqBody),
 	)
-
 	if err != nil {
-		c.logger.Errorf("could not build a conversion api request: %s", err.Error())
+		c.logger.Errorf("could not build conversion API request: %s", err.Error())
 		return nil, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 	resp, err := otelhttp.DefaultClient.Do(req)
 	if err != nil {
-		c.logger.Errorf("could not send a conversion api request: %s", err.Error())
+		c.logger.Errorf("could not send conversion API request: %s", err.Error())
 		return nil, err
 	}
 
@@ -182,9 +207,21 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 		return nil, err
 	}
 
+	if cresp.Error == -9 {
+		return nil, errConversionAutoFormatError
+	}
+
+	if cresp.Error == -5 {
+		return nil, errConversionPasswordRequiredError
+	}
+
+	if cresp.Error < 0 {
+		return nil, errConversionErrorOccurred
+	}
+
 	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
 	if err != nil {
-		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
+		c.logger.Errorf("could not retrieve converted file: %s", err.Error())
 		return nil, err
 	}
 
@@ -193,7 +230,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid, fileID string) 
 	newPath := fmt.Sprintf("%s/%s", file.PathLower[:strings.LastIndex(file.PathLower, "/")], filename)
 	uplres, err := c.api.CreateFile(ctx, newPath, ures.AccessToken, cfile.Body)
 	if err != nil {
-		c.logger.Errorf("could not modify file %s: %s", fileID, err.Error())
+		c.logger.Errorf("could not upload converted file %s: %s", aRequest.FileID, err.Error())
 		return nil, err
 	}
 
@@ -232,14 +269,25 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			return
 		}
 
-		switch creq.Action {
-		case "create":
-			ncreq, err := c.convertFile(r.Context(), uid, creq.FileID)
+		if creq.Action == "create" {
+			ncreq, err := c.convertFile(r.Context(), uid, creq)
 			if err != nil {
+				if errors.Is(errConversionAutoFormatError, err) {
+					rw.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
+				if errors.Is(errConversionPasswordRequiredError, err) {
+					rw.WriteHeader(http.StatusLocked)
+					return
+				}
+
 				rw.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
+			ncreq.IssuedAt = jwt.NewNumericDate(time.Now())
+			ncreq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(5 * time.Minute))
 			sig, err := c.jwtManager.Sign(c.credentials.ClientSecret, ncreq)
 			if err != nil {
 				rw.WriteHeader(http.StatusInternalServerError)
@@ -249,22 +297,24 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			http.Redirect(
 				rw, r,
 				fmt.Sprintf(
-					"/editor?token=%s",
+					"/editor?token=%s&file_id=%s",
 					sig,
+					ncreq.FileID,
 				),
 				http.StatusMovedPermanently,
 			)
-			return
-		default:
-			http.Redirect(
-				rw, r,
-				fmt.Sprintf(
-					"/editor?token=%s",
-					token,
-				),
-				http.StatusMovedPermanently,
-			)
+
 			return
 		}
+
+		http.Redirect(
+			rw, r,
+			fmt.Sprintf(
+				"/editor?token=%s&file_id=%s",
+				token,
+				creq.FileID,
+			),
+			http.StatusMovedPermanently,
+		)
 	}
 }

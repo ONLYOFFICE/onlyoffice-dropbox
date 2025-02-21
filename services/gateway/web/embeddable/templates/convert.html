@@ -1,6 +1,6 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * The MIT License (MIT)
  *
@@ -29,19 +29,23 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
     <title>ONLYOFFICE</title>
     <link href="https://fonts.cdnfonts.com/css/lato" rel="stylesheet" />
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        [x-cloak] {
+            display: none;
+        }
+
         html {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             -ms-overflow-style: none;
             scrollbar-width: none;
-
         }
 
         html::-webkit-scrollbar {
@@ -66,6 +70,7 @@
             font-weight: 600;
             font-size: 13px;
             line-height: 20px;
+            color: #333333;
         }
 
         span {
@@ -86,7 +91,6 @@
             cursor: pointer;
         }
 
-
         .button_primary {
             background-color: #0061D5;
             color: white;
@@ -100,7 +104,8 @@
 
         .button:focus,
         .button:hover {
-            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
+                        0 17px 50px 0 rgba(0, 0, 0, 0.19);
         }
 
         .button:disabled {
@@ -110,7 +115,6 @@
         }
 
         #tooltip {
-            /* transform: translate(40.5%, -70%); */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -118,10 +122,9 @@
             height: 68px;
             background: #FFFFFF;
             position: relative;
-            -moz-border-radius: 12px;
-            -webkit-border-radius: 12px;
             border-radius: 12px;
-            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
+                        0 17px 50px 0 rgba(0, 0, 0, 0.19);
         }
 
         #tooltip::before {
@@ -136,6 +139,19 @@
             border-bottom: 13px solid transparent;
         }
 
+        #tooltip_info {
+            color: #000000;
+        }
+
+        #tooltip_info_link {
+            color: #000000;
+            text-decoration: underline;
+        }
+
+        #tooltip_icon_svg {
+            fill: #0061D5;
+        }
+
         .buttontext {
             margin: 0;
             width: 100px;
@@ -147,11 +163,227 @@
 
         #conversion {
             width: 407px;
-            height: auto;
             padding: 16px;
             border: 1px solid #EFEFEF;
             border-radius: 6px;
             box-shadow: 2px 2px 22px 0px #0000000D;
+            background: #FFFFFF;
+        }
+
+        #file-password {
+            box-sizing: border-box;
+            width: 100%;
+            height: 32px;
+            border: 1px solid #C2C2C2;
+            border-radius: 6px;
+            white-space: nowrap;
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .xml-type {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 93px;
+            height: 18px;
+            background: #E8E8E8;
+            border: 1px solid lightgray;
+            border-radius: 43px;
+            cursor: pointer;
+            font-family: 'Lato';
+            font-size: 10px;
+            font-weight: 600;
+            padding: 0 6px;
+            transition: background-color 0.3s, border-color 0.3s;
+            min-width: 0;
+        }
+
+        .xml-text {
+            color: #000000;
+            display: inline-block;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .xml-type:hover {
+            background-color: #f0f0f0;
+            border-color: gray;
+        }
+
+        input[type="radio"]:checked + .xml-type {
+            background-color: #d4d4d4;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .xml-type .xml-text {
+            color: white;
+        }
+
+        input[type="radio"]:checked + .docx {
+            background-color: #0061D5;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .docx .xml-text {
+            color: white;
+        }
+
+        input[type="radio"]:checked + .xlsx {
+            background-color: #107C10;
+            color: white;
+        }
+
+        input[type="radio"]:checked + .xlsx .xml-text {
+            color: white;
+        }
+
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .duration-300 {
+            transition-duration: 300ms;
+        }
+
+        .ease-out {
+            transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+
+        .ease-in {
+            transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+        }
+
+        .opacity-0 {
+            opacity: 0;
+        }
+
+        .opacity-100 {
+            opacity: 1;
+        }
+
+        .scale-90 {
+            transform: scale(0.9);
+        }
+
+        .scale-100 {
+            transform: scale(1);
+        }
+
+        .transform {
+            transform: translate(var(--tw-translate-x), var(--tw-translate-y))
+                       rotate(var(--tw-rotate))
+                       skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+                       scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1A1918;
+                color: #f0f0f0;
+            }
+
+            hr.solid {
+                border-top: 1px solid #555555;
+            }
+
+            .text, label {
+                color: #f0f0f0;
+            }
+
+            span {
+                color: #BBB5AE;
+            }
+
+            .button_primary {
+                background-color: #F7F5F2;
+                color: #1E1919;
+            }
+
+            .button_primary:disabled {
+                background-color: #5A5650;
+            }
+
+            .button_secondary {
+                border: none;
+                background-color: #FFFFFF1A;
+                color: #FFFFFF;
+            }
+
+            #tooltip {
+                background: #FFFFFF;
+                box-shadow: none;
+            }
+
+            #tooltip::before {
+                border-right: 26px solid #FFFFFF;
+            }
+
+            #tooltip_info {
+                color: #FFFFFF;
+            }
+
+            #tooltip_info_link {
+                color: #FFFFFF;
+            }
+
+            #tooltip_icon_svg {
+                fill: #D8D8D8;
+            }
+
+            #conversion {
+                background: #2D2B29;
+                border: 1px solid #2D2B29;
+                box-shadow: none;
+            }
+
+            #file-password {
+                background-color: #2D2B29;
+                color: #f0f0f0;
+                border: 1px solid #555555;
+            }
+
+            .xml-type {
+                border-color: #3c3c3c;
+                color: #E8E8E8;
+            }
+
+            .xml-type:hover {
+                background-color: #706e6e;
+                border-color: #3c3c3c;
+            }
+
+            input[type="radio"]:checked + .docx {
+                background-color: #6D9BF8;
+                color: white;
+            }
+
+            input[type="radio"]:checked + .xlsx {
+                background-color: #469D46;
+                color: white;
+            }
+
+            #tooltip {
+                background: #2D2B29;
+                color: #f0f0f0;
+                box-shadow: 0 12px 16px 0 rgba(255, 255, 255, 0.1),
+                            0 17px 50px 0 rgba(255, 255, 255, 0.1);
+            }
+
+            #tooltip::before {
+                border-right: 26px solid #2D2B29;
+            }
         }
     </style>
 </head>
@@ -184,6 +416,70 @@
                                 <div style="padding-left: 1.25rem;">
                                     <span>{{.editCopy}}</span>
                                 </div>
+                                <div
+                                    x-cloak
+                                    x-show="action === 'create' && passwordRequired"
+                                    style="margin-top: .2rem; padding-left: 1.25rem;"
+                                >
+                                    <input
+                                        id="file-password"
+                                        type="password"
+                                        placeholder="{{.passwordRequired}}"
+                                        title="{{.passwordRequired}}"
+                                        x-model="password"
+                                    >
+                                    <span x-show="!passwordInvalid">{{.passwordInformation}}</span>
+                                    <span x-show="passwordInvalid" style="color: #FF0000;">{{.passwordInvalid}}</span>
+                                </div>
+                                {{if .IsXML}}
+                                <div
+                                    x-show="action === 'create' && autoconversionFailed"
+                                    x-cloak
+                                    x-transition:enter="transition-all duration-300 ease-out"
+                                    x-transition:enter-start="opacity-0 scale-90 transform"
+                                    x-transition:enter-end="opacity-100 scale-100 transform"
+                                    x-transition:leave="transition-all duration-300 ease-in"
+                                    x-transition:leave-start="opacity-100 scale-100 transform"
+                                    x-transition:leave-end="opacity-0 scale-90 transform"
+                                >
+                                    <div style="display: flex; margin-left: 1.25rem; margin-top: .75rem;">
+                                        <div style="display: flex; flex-shrink: 0; padding-top: .25rem;">
+                                            <svg
+                                                class="icon"
+                                                width="13"
+                                                height="13"
+                                                viewBox="0 0 13 13"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path 
+                                                    id="tooltip_icon_svg"
+                                                    fill-rule="evenodd" 
+                                                    clip-rule="evenodd" 
+                                                    d="M6.5 12.5C9.81371 12.5 12.5 9.81371 12.5 6.5C12.5 3.18629 9.81371 0.5 6.5 0.5C3.18629 0.5 0.5 3.18629 0.5 6.5C0.5 9.81371 3.18629 12.5 6.5 12.5ZM7.5 6.5C7.5 7.05228 7.05228 7.5 6.5 7.5C5.94772 7.5 5.5 7.05228 5.5 6.5L5.5 3.5C5.5 2.94772 5.94772 2.5 6.5 2.5C7.05229 2.5 7.5 2.94772 7.5 3.5L7.5 6.5ZM6.5 10.5C7.05228 10.5 7.5 10.0523 7.5 9.5C7.5 8.94771 7.05228 8.5 6.5 8.5C5.94771 8.5 5.5 8.94771 5.5 9.5C5.5 10.0523 5.94771 10.5 6.5 10.5Z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <p class="text" style="margin-left: .25rem; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis;">
+                                            {{.xmlInformation}}
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: .75rem; margin-left: 1.25rem; margin-top: 0.5rem;">
+                                        <label>
+                                            <input type="radio" name="xmlType" value="docx" x-model="xmlType" class="hidden" />
+                                            <span class="xml-type docx">
+                                                <span class="xml-text">{{.documentType}}</span>
+                                            </span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="xmlType" value="xlsx" x-model="xmlType" class="hidden" />
+                                            <span class="xml-type xlsx">
+                                                <span class="xml-text">{{.spreadsheetType}}</span>
+                                            </span>
+                                        </label>                                     
+                                    </div>
+                                </div>                 
+                                {{end}}
                             </div>
                             {{end}}
                             {{if .LossEdit}}
@@ -193,18 +489,18 @@
                                 <label for="edit">{{.openEditing}}</label>
                                 <span style="cursor: pointer;"
                                     x-on:mouseover="(e) => showTooltip(e)" x-on:mouseleave="(e) => closeTooltip(e)">
-                                    <svg id="tooltip-icon" width="12" height="12" viewBox="0 0 12 12" fill="none"
+                                    <svg id="tooltip_icon" width="12" height="12" viewBox="0 0 12 12" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
-                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                        <path id="tooltip_icon_svg" fill-rule="evenodd" clip-rule="evenodd"
                                             d="M6 12C9.31371 12 12 9.31371 12 6C12 2.68629 9.31371 0 6 0C2.68629 0 0 2.68629 0 6C0 9.31371 2.68629 12 6 12ZM5 6C5 5.44772 5.44772 5 6 5C6.55228 5 7 5.44772 7 6V9C7 9.55229 6.55228 10 6 10C5.44772 10 5 9.55229 5 9V6ZM6 2C5.44772 2 5 2.44772 5 3C5 3.55228 5.44772 4 6 4C6.55228 4 7 3.55228 7 3C7 2.44772 6.55228 2 6 2Z"
-                                            fill="#D0D5DA" />
+                                        />
                                     </svg>
                                     <div id="tooltip-container" style="position: absolute;">
                                         <div id="tooltip" x-show="tooltip">
                                             <div
                                                 style="padding: 10px; display: flex; justify-content: center; align-items: center;">
-                                                <b style="color: black;">{{.moreInfo}}&nbsp;</b>
-                                                <a style="text-decoration: underline; color: black;"
+                                                <b id="tooltip_info">{{.moreInfo}}&nbsp;</b>
+                                                <a id="tooltip_info_link"
                                                     href="https://helpcenter.onlyoffice.com/faq/connectors.aspx">
                                                     https://helpcenter.onlyoffice.com/faq/connectors.aspx
                                                 </a>
@@ -247,23 +543,32 @@
         </div>
     </div>
     <script>
-        var token = "{{.CSRF}}";
+        const token = "{{.CSRF}}";
+        const isXML = "{{.IsXML}}";
         function convertForm() {
             document.getElementById("conversion").hidden = false;
             document.getElementById("error").hidden = false;
             return {
                 action: '',
+                autoconversionFailed: false,
+                passwordRequired: false,
+                passwordInvalid: false,
+                password: '',
                 loading: false,
                 error: false,
                 tooltip: false,
+                xmlType: '',
                 showTooltip(e) {
                     this.tooltip = true;
-                    const iconPosition = document.getElementById('tooltip-icon').getBoundingClientRect();
+                    const iconPosition = document.getElementById('tooltip_icon').getBoundingClientRect();
                     document.getElementById('tooltip-container').style.top = `${iconPosition.y-31}px`;
                     document.getElementById('tooltip-container').style.left = `${iconPosition.x+42}px`;
                 },
                 closeTooltip(e) {
                     this.tooltip = false;
+                },
+                changeXmlType(e) {
+                    this.xmlType = e.target.value;
                 },
                 async submit() {
                     this.loading = true;
@@ -274,6 +579,8 @@
                         const state = JSON.parse(params.state || '{}');
                         state.action = this.action;
                         state.file_id = params["file_id"];
+                        state.password = this.password;
+                        state.xml_type = this.xmlType;
                         const resp = await fetch(`/api/convert`, {
                             method: 'POST',
                             headers: {
@@ -281,6 +588,22 @@
                             },
                             body: JSON.stringify(state),
                         });
+
+                        if (resp.status === 400 && isXML === 'true') {
+                            this.autoconversionFailed = true;
+                            this.loading = false;
+                            this.error = false;
+                            return;
+                        }
+
+                        if (resp.status === 423) {
+                            this.passwordRequired = true;
+                            this.passwordInvalid = !!this.password || this.passwordInvalid;
+                            this.password = '';
+                            this.loading = false;
+                            this.error = false;
+                            return;
+                        }
 
                         if (resp.status >= 300) throw new Error('could not convert a file');
 

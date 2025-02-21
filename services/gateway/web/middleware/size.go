@@ -16,16 +16,21 @@
  *
  */
 
-package main
+package middleware
 
-import (
-	"log"
+import "net/http"
 
-	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/cmd"
-)
+func MaxPayloadSizeMiddleware(limit int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if r.ContentLength > 0 {
+				if r.ContentLength > limit {
+					rw.WriteHeader(http.StatusRequestEntityTooLarge)
+					return
+				}
+			}
 
-func main() {
-	if err := cmd.Run(); err != nil {
-		log.Fatalln(err)
+			next.ServeHTTP(rw, r)
+		})
 	}
 }

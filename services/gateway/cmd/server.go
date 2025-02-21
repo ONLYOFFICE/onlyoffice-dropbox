@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	pkg "github.com/ONLYOFFICE/onlyoffice-integration-adapters"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	chttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
@@ -58,9 +59,11 @@ func Server() *cli.Command {
 					controller.NewAuthController,
 					controller.NewEditorController,
 					convert.NewConvertController,
+					controller.NewHistoryController,
 					middleware.NewSessionMiddleware,
 					chttp.NewService, web.NewServer,
 					client.NewDropboxAuthClient,
+					format.NewMapFormatManager,
 				),
 			).Bootstrap()
 

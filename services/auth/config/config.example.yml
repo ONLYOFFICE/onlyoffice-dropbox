@@ -1,6 +1,6 @@
 namespace: "dropbox"
 name: "auth"
-version: 0
+version: "1.0.0"
 address: ":5052"
 repl_address: ":5053"
 debug: false
@@ -9,7 +9,6 @@ persistence:
   type: 1
 registry:
   addresses: [""]
-  type: 2
 tracer:
   enable: false
   address: ""
@@ -23,12 +22,10 @@ logger:
   name: "auth-logger"
   level: 1
   color: true
-oauth:
-  project_id: ""
+credentials:
   client_id: ""
   client_secret: ""
-  auth_uri: ""
-  token_uri: ""
-  auth_provider_x509_cert_url: ""
-  redirect_uris: [""]
-  javascript_origins: [""]
+  redirect_url: ""
+  auth_url: ""
+  token_url: ""
+  scopes: [""]

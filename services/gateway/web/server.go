@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type GdriveHTTPService struct {
+type DropboxHTTPService struct {
 	mux               *mux.Router
 	authController    controller.AuthController
 	editorController  controller.EditorController
 	convertController convert.ConvertController
+	historyController controller.HistoryController
 	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
@@ -46,14 +47,16 @@ func NewServer(
 	authController controller.AuthController,
 	editorController controller.EditorController,
 	convertController convert.ConvertController,
+	historyController controller.HistoryController,
 	sessionMiddleware middleware.SessionMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
-	service := GdriveHTTPService{
+	service := DropboxHTTPService{
 		mux:               mux.NewRouter(),
 		authController:    authController,
 		editorController:  editorController,
 		convertController: convertController,
+		historyController: historyController,
 		sessionMiddleware: sessionMiddleware,
 		credentials:       credentials,
 	}
@@ -62,32 +65,33 @@ func NewServer(
 }
 
 // ApplyMiddleware useed to apply http server middlewares.
-func (s GdriveHTTPService) ApplyMiddleware(middlewares ...func(http.Handler) http.Handler) {
+func (s DropboxHTTPService) ApplyMiddleware(middlewares ...func(http.Handler) http.Handler) {
 	for _, middleware := range middlewares {
 		s.mux.Use(middleware)
 	}
 }
 
 // NewHandler returns http server engine.
-func (s GdriveHTTPService) NewHandler() interface {
+func (s DropboxHTTPService) NewHandler() interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 } {
 	return s.InitializeServer()
 }
 
 // InitializeServer sets all injected dependencies.
-func (s *GdriveHTTPService) InitializeServer() *mux.Router {
+func (s *DropboxHTTPService) InitializeServer() *mux.Router {
 	s.InitializeRoutes()
 	return s.mux
 }
 
 // InitializeRoutes builds all http routes.
-func (s *GdriveHTTPService) InitializeRoutes() {
+func (s *DropboxHTTPService) InitializeRoutes() {
 	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
 		csrf.Protect([]byte(s.credentials.ClientSecret)))
 
+	sizeMiddleware := middleware.MaxPayloadSizeMiddleware(1 * 1024 * 1024)
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
-	root.Use(s.sessionMiddleware.Protect)
+	root.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
@@ -96,8 +100,10 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 
 	api := s.mux.NewRoute().PathPrefix("/api").Subrouter()
-	api.Use(s.sessionMiddleware.Protect)
+	api.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	api.Handle("/convert", s.convertController.BuildConvertFile()).Methods(http.MethodPost)
+	api.Handle("/history", s.historyController.BuildGetFileHistory()).Methods(http.MethodGet)
+	api.Handle("/history/links", s.historyController.BuildGetFileHistoryLinks()).Methods(http.MethodGet)
 
 	var staticFS = http.FS(embeddable.IconFiles)
 	s.mux.NotFoundHandler = http.FileServer(staticFS)

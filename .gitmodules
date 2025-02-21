@@ -1,0 +1,3 @@
+[submodule "services/shared/format/formats"]
+	path = services/shared/format/formats
+	url = https://github.com/ONLYOFFICE/document-formats.git

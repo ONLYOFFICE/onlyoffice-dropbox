@@ -1,16 +1,17 @@
 namespace: "dropbox"
 name: "callback"
-version: 0
+version: "1.0.0"
 address: ":5044"
 repl_address: ":3132"
 debug: false
 registry:
   addresses: [""]
+cache:
   type: 2
-messaging:
-  type: 1
-  addresses: [""]
-  durable: true
+  address: 127.0.0.1:6379
+  username: ""
+  password: ""
+  database: 5
 tracer:
   enable: false
   address: ""
@@ -27,20 +28,12 @@ logger:
   name: "callback-logger"
   level: 1
   color: true
-worker:
-  enable: true
-  addresses: [""]
-  max_concurrency: 5
-  database: 3
-oauth:
-  project_id: ""
+credentials:
   client_id: ""
   client_secret: ""
-  auth_uri: ""
-  token_uri: ""
-  auth_provider_x509_cert_url: ""
-  redirect_uris: [""]
-  javascript_origins: [""]
+  redirect_url: ""
+  token_url: "https://api.dropboxapi.com/oauth2/token"
+  scopes: [""]
 onlyoffice:
   builder:
     document_server_url: ""

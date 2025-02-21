@@ -1,4 +1,4 @@
-name: Build dropbox connector
+name: Build dropbox app
 
 run-name: >
      Build dropbox version: ${{ github.event.inputs.version }}
@@ -28,7 +28,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build connector
+      - name: Build app
         shell: bash
         run: |
           docker compose build 

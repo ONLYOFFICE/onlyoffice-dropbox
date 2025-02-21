@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2025
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,7 +128,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
-		tctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
 		query := r.URL.Query()
@@ -175,7 +175,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 				return nil, fmt.Errorf("could not save a cookie session: %w", err)
 			}
 
-			t, err := c.oauth.Exchange(tctx, code, oauth2.SetAuthURLParam("code_verifier", vefifier))
+			t, err := c.oauth.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", vefifier))
 			if err != nil {
 				return nil, fmt.Errorf("could not exchange oauth tokens: %w", err)
 			}
@@ -191,7 +191,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			return
 		}
 
-		usr, err := c.api.GetUser(tctx, t.AccessToken)
+		usr, err := c.api.GetUser(ctx, t.AccessToken)
 		if err != nil {
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
 				c.logger.Errorf("could not execute an installation error template: %w", err)
@@ -200,7 +200,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		}
 
 		var resp interface{}
-		if err := c.client.Call(r.Context(), c.client.NewRequest(
+		if err := c.client.Call(ctx, c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.config.Namespace),
 			"UserInsertHandler.InsertUser",
 			response.UserResponse{

@@ -23,5 +23,11 @@
     "emailMain": "Grazie per esserti iscritto!",
     "emailSubtitleOne": "Prima di accedere",
     "emailSubtitleTwo": ", devi verificare la tua e-mail",
-    "emailFootnote": "Ti preghiamo di controllare la tua posta in arrivo"
+    "emailFootnote": "Ti preghiamo di controllare la tua posta in arrivo",
+    "documentType": "Documento",
+    "spreadsheetType": "Foglio di calcolo",
+    "passwordRequired": "Password del file richiesta",
+    "passwordInformation": "La copia del file non sarà protetta da password",
+    "passwordInvalid": "Password incorretta",
+    "xmlInformation": "Scegli il tipo che vuoi aprire:"
 }

@@ -1,6 +1,6 @@
-# ONLYOFFICE Integration App for Dropbox
+# ONLYOFFICE app for Dropbox
 
-ONLYOFFICE integration app for Dropbox allows working with office files directly within [Dropbox](https://www.dropbox.com/).
+ONLYOFFICE app for Dropbox allows working with office files directly within [Dropbox](https://www.dropbox.com/).
 
 ## How it works
 

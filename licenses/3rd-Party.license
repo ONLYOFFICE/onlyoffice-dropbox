@@ -1,4 +1,4 @@
-ONLYOFFICE Box uses code from the following 3rd party projects:
+ONLYOFFICE app for Dropbox uses code from the following 3rd party projects:
 
 alice         - Painless middleware chaining for Go. (https://github.com/justinas/alice/blob/master/LICENSE)
 License:        MIT

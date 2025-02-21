@@ -23,5 +23,11 @@
     "emailMain": "Vielen Dank für Ihre Anmeldung!",
     "emailSubtitleOne": "Bevor Sie Zugang erhalten",
     "emailSubtitleTwo": ", müssen Sie Ihre E-Mail-Adresse bestätigen",
-    "emailFootnote": "Bitte prüfen Sie Ihren Posteingang"
+    "emailFootnote": "Bitte prüfen Sie Ihren Posteingang",
+    "documentType": "Dokument",
+    "spreadsheetType": "Tabellenkalkulation",
+    "passwordRequired": "Dateipasswort erforderlich",
+    "passwordInformation": "Die Dateikopie ist nicht passwortgeschützt",
+    "passwordInvalid": "Falsches Passwort",
+    "xmlInformation": "Bitte wählen Sie den Typ, den Sie öffnen möchten:"
 }
