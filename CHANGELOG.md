@@ -1,6 +1,6 @@
 # Change Log
 
-##
+## 1.1.0
 ## Added
 - user image in editor
 - file history in the editor
