@@ -1,6 +1,6 @@
 module github.com/ONLYOFFICE/onlyoffice-dropbox
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.4
@@ -168,5 +168,5 @@ require (
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0
-	golang.org/x/oauth2 v0.24.0
+	golang.org/x/oauth2 v0.27.0
 )
