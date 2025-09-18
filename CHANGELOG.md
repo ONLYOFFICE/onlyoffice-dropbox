@@ -1,7 +1,8 @@
 # Change Log
 
-##
+## 1.1.1
 ## Changed
+- added business account team folder support
 - extended list of supported formats
 
 ## 1.1.0
