@@ -70,7 +70,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			uid,
 		), &ures); err != nil {
-			c.renderErrorPage(rw)
+			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 

@@ -23,3 +23,8 @@ type DropboxFileVersionsRequest struct {
 	Mode  string `json:"mode"`
 	Path  string `json:"path"`
 }
+
+type DropboxPathRootHeader struct {
+	Tag  string `json:".tag"`
+	Root string `json:"root"`
+}
