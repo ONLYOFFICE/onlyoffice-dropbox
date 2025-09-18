@@ -199,12 +199,13 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 			return
 		}
 
+		accountID := usr.AccountID
 		var resp interface{}
 		if err := c.client.Call(ctx, c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.config.Namespace),
 			"UserInsertHandler.InsertUser",
 			response.UserResponse{
-				ID:           usr.AccountID,
+				ID:           accountID,
 				AccessToken:  t.AccessToken,
 				RefreshToken: t.RefreshToken,
 				TokenType:    t.TokenType,
@@ -221,7 +222,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 
 		session, _ = c.store.Get(r, "authorization")
 		tkn, err := c.jwtManager.Sign(c.oauth.ClientSecret, jwt.RegisteredClaims{
-			ID:        t.Extra("account_id").(string),
+			ID:        accountID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(25 * time.Hour)),
 		})

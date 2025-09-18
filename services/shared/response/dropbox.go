@@ -26,11 +26,19 @@ import (
 )
 
 type DropboxUserResponse struct {
-	AccountID      string          `json:"account_id"`
-	Email          string          `json:"email"`
-	Name           DropboxUserName `json:"name"`
-	Locale         string          `json:"locale"`
-	ProfilePicture string          `json:"profile_photo_url,omitempty"`
+	AccountID      string           `json:"account_id"`
+	Email          string           `json:"email"`
+	Name           DropboxUserName  `json:"name"`
+	Locale         string           `json:"locale"`
+	ProfilePicture string           `json:"profile_photo_url,omitempty"`
+	RootInfo       *DropboxRootInfo `json:"root_info,omitempty"`
+}
+
+type DropboxRootInfo struct {
+	Tag             string `json:".tag"`
+	RootNamespaceID string `json:"root_namespace_id"`
+	HomeNamespaceID string `json:"home_namespace_id"`
+	HomePath        string `json:"home_path,omitempty"`
 }
 
 type DropboxUserName struct {
