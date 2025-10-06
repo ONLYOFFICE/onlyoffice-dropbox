@@ -16,21 +16,24 @@ env:
           
 jobs:
   build:
-    name: "Build tag: ${{ github.event.inputs.version }}"
+    name: "Build dropbox: ${{ github.event.inputs.version }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          submodules: recursive
 
-      - name: Build app
-        shell: bash
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_TEST_REGISTRY }}
+          username: ${{ secrets.DOCKER_TEST_USERNAME }}
+          password: ${{ secrets.DOCKER_TEST_ACCESS_TOKEN }}
+      
+      - name: build and push
+        env:
+          REGISTRY: ${{ secrets.DOCKER_TEST_REGISTRY }}
         run: |
-          docker compose build 
-          docker compose push
-          docker images
+           docker compose build
+           docker compose push
