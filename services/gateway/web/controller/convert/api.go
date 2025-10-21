@@ -184,7 +184,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 	req, err := http.NewRequestWithContext(
 		uctx,
 		http.MethodPost,
-		fmt.Sprintf("%s/converter?shardKey=%s", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL, creq.Key),
+		fmt.Sprintf("%s/converter?shardkey=%s", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL, creq.Key),
 		bytes.NewBuffer(reqBody),
 	)
 	if err != nil {
