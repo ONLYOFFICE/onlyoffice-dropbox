@@ -1,6 +1,6 @@
 namespace: "dropbox"
 name: "callback"
-version: "1.0.0"
+version: "1.1.1"
 address: ":5044"
 repl_address: ":3132"
 debug: false
