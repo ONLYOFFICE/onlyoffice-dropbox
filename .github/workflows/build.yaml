@@ -1,36 +1,80 @@
-name: Build dropbox app
+name: "Build onlyoffice-dropbox"
 
-run-name: >
-     Build dropbox version: ${{ github.event.inputs.version }}
+run-name: "Build onlyoffice-dropbox: ${{ github.event.inputs.tag || github.run_number }}"
 
 on:
+  push:
+    branches:
+    - develop
+
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Set version that will be used for images tag'
+      tag:
+        description: 'Specify tag or it will be auto service:rc.<run_number>'
         type: string
-        required: true
+        required: false
 
-env: 
-  PRODUCT_VERSION: ${{ github.event.inputs.version }}
-          
+env:
+  DOCKER_HUB_IMAGE_NAME: onlyoffice-dropbox
+  DOCKER_HUB_NAMESPACE: onlyoffice
+
 jobs:
   build:
-    name: "Build tag: ${{ github.event.inputs.version }}"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ gateway, auth, callback ]
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build app
-        shell: bash
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: handle-rc-tag
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          MANUAL_TAG: ${{ github.event.inputs.tag }}
         run: |
-          docker compose build 
-          docker compose push
-          docker images
+          echo "APP_VERSION=1.1.1" >> "$GITHUB_ENV" # Should be set!
+          if [[ "$EVENT" == 'push' && "$REF" == 'develop' ]]; then
+           echo "RC_TAG=rc.${{ github.run_number }}" >> "$GITHUB_ENV"
+          elif [[ "$EVENT" == 'workflow_dispatch' && -z "$TAG" ]]; then
+           echo "RC_TAG=rc.${{ github.run_number }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish Image
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          target: ${{ matrix.service }}
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.DOCKER_HUB_NAMESPACE }}/dropbox-${{ matrix.service }}:${{ env.APP_VERSION }}-${{ github.event.inputs.tag || env.RC_TAG }}
+
+  update:
+    name: Update connector
+    runs-on: ubuntu-latest
+    needs: ['build']
+    steps:
+      - name: Make hook
+        id: webhook
+        run: |
+          dropbox_webhook_hash=$(printf 'dropbox-webhook' | openssl dgst -sha256 -r -hmac "${{ secrets.DROPBOX_WEBHOOK_TOKEN }}" | awk '{print $1}')
+          curl ${{ secrets.DROPBOX_WEBHOOK_URL }} -X POST -H "X-Signature: sha256=${dropbox_webhook_hash}" -d 'dropbox-webhook'
+        shell: bash

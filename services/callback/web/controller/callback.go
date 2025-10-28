@@ -170,6 +170,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 					), rw)
 					return
 				}
+
 				defer respFile.Body.Close()
 				fl, err := c.api.GetFile(tctx, fileID, ures.AccessToken)
 				if err != nil {

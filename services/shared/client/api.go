@@ -20,6 +20,8 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +37,14 @@ import (
 	"go-micro.dev/v4/cache"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
+)
+
+type OperationType int
+
+const (
+	GetFile OperationType = iota
+	GetFileVersions
+	GetDownloadLink
 )
 
 var ErrInvalidResponsePayload = errors.New("invalid response payload")
@@ -76,8 +86,18 @@ func NewDropboxAuthClient(
 	}
 }
 
-func (c DropboxClient) GetUser(ctx context.Context, token string) (response.DropboxUserResponse, error) {
+func (c DropboxClient) getUser(ctx context.Context, token string) (response.DropboxUserResponse, error) {
 	var res response.DropboxUserResponse
+
+	h := sha256.Sum256([]byte(token))
+	cacheKey := fmt.Sprintf("user:%s", hex.EncodeToString(h[:])[:16])
+
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
 	if _, err := c.client.R().
 		SetAuthToken(token).
 		SetResult(&res).
@@ -89,21 +109,40 @@ func (c DropboxClient) GetUser(ctx context.Context, token string) (response.Drop
 		return res, ErrInvalidResponsePayload
 	}
 
+	c.cache.Put(ctx, cacheKey, res, 30*time.Second)
+
 	return res, nil
 }
 
-func (c DropboxClient) GetFile(ctx context.Context, path, token string) (response.DropboxFileResponse, error) {
-	var res response.DropboxFileResponse
-	cacheKey := fmt.Sprintf("file:%s", path)
-
-	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
-		if merr := mapstructure.Decode(val, &res); merr == nil {
-			return res, nil
-		}
+func (c DropboxClient) buildTeamHeader(rootNamespaceID string) (string, error) {
+	header := request.DropboxPathRootHeader{
+		Tag:  "root",
+		Root: rootNamespaceID,
 	}
 
+	headerBytes, err := json.Marshal(header)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal path root header: %w", err)
+	}
+
+	return string(headerBytes), nil
+}
+
+func (c DropboxClient) isTeamAccount(userRes response.DropboxUserResponse) bool {
+	return userRes.AccountID != "" &&
+		userRes.RootInfo != nil &&
+		userRes.RootInfo.RootNamespaceID != ""
+}
+
+func (c DropboxClient) getFileStandard(
+	ctx context.Context,
+	path, token string,
+	res response.DropboxFileResponse,
+	_ string,
+) (response.DropboxFileResponse, error) {
 	if _, err := c.client.R().
-		SetBody(map[string]interface{}{
+		SetContext(ctx).
+		SetBody(map[string]any{
 			"include_deleted":                     false,
 			"include_has_explicit_shared_members": false,
 			"include_media_info":                  false,
@@ -119,22 +158,51 @@ func (c DropboxClient) GetFile(ctx context.Context, path, token string) (respons
 		return res, ErrInvalidResponsePayload
 	}
 
-	c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+	return res, nil
+}
+
+func (c DropboxClient) getFileTeam(
+	ctx context.Context,
+	path, token string,
+	userRes response.DropboxUserResponse,
+) (response.DropboxFileResponse, error) {
+	var res response.DropboxFileResponse
+
+	if userRes.RootInfo == nil || userRes.RootInfo.RootNamespaceID == "" {
+		return res, ErrInvalidResponsePayload
+	}
+
+	pathRootHeader, err := c.buildTeamHeader(userRes.RootInfo.RootNamespaceID)
+	if err != nil {
+		return res, err
+	}
+
+	if _, err := c.client.R().
+		SetContext(ctx).
+		SetBody(map[string]any{
+			"include_deleted":                     false,
+			"include_has_explicit_shared_members": false,
+			"include_media_info":                  false,
+			"path":                                path,
+		}).
+		SetAuthToken(token).
+		SetHeader("Dropbox-API-Path-Root", pathRootHeader).
+		SetResult(&res).
+		Post("https://api.dropboxapi.com/2/files/get_metadata"); err != nil {
+		return res, err
+	}
 
 	return res, nil
 }
 
-func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) (response.DropboxFileVersionsResponse, error) {
-	var res response.DropboxFileVersionsResponse
-	cacheKey := fmt.Sprintf("history:%s", path)
-
-	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
-		if merr := mapstructure.Decode(val, &res); merr == nil {
-			return res, nil
-		}
-	}
-
+func (c DropboxClient) getFileVersionsStandard(
+	ctx context.Context,
+	path, token string,
+	res response.DropboxFileVersionsResponse,
+	_ string,
+) (response.DropboxFileVersionsResponse, error) {
 	if _, err := c.client.R().
+		SetContext(ctx).
 		SetBody(request.DropboxFileVersionsRequest{
 			Limit: 50,
 			Mode:  "id",
@@ -146,27 +214,50 @@ func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) 
 		return res, err
 	}
 
-	if len(res.Entries) > 0 {
-		c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+	return res, nil
+}
+
+func (c DropboxClient) getFileVersionsTeam(
+	ctx context.Context,
+	path, token string,
+	userRes response.DropboxUserResponse,
+) (response.DropboxFileVersionsResponse, error) {
+	var res response.DropboxFileVersionsResponse
+
+	if userRes.RootInfo == nil || userRes.RootInfo.RootNamespaceID == "" {
+		return res, ErrInvalidResponsePayload
 	}
 
-	res.ExcludeStale()
-	res.SortEntries()
+	pathRootHeader, err := c.buildTeamHeader(userRes.RootInfo.RootNamespaceID)
+	if err != nil {
+		return res, err
+	}
+
+	if _, err := c.client.R().
+		SetContext(ctx).
+		SetBody(request.DropboxFileVersionsRequest{
+			Limit: 50,
+			Mode:  "id",
+			Path:  path,
+		}).
+		SetAuthToken(token).
+		SetHeader("Dropbox-API-Path-Root", pathRootHeader).
+		SetResult(&res).
+		Post("https://api.dropboxapi.com/2/files/list_revisions"); err != nil {
+		return res, err
+	}
 
 	return res, nil
 }
 
-func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) (response.DropboxDownloadResponse, error) {
-	var res response.DropboxDownloadResponse
-	cacheKey := fmt.Sprintf("downloadLink:%s", path)
-
-	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
-		if merr := mapstructure.Decode(val, &res); merr == nil {
-			return res, nil
-		}
-	}
-
+func (c DropboxClient) getDownloadLinkStandard(
+	ctx context.Context,
+	path, token string,
+	res response.DropboxDownloadResponse,
+	_ string,
+) (response.DropboxDownloadResponse, error) {
 	if _, err := c.client.R().
+		SetContext(ctx).
 		SetBody(map[string]string{
 			"path": path,
 		}).
@@ -180,12 +271,88 @@ func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) 
 		return res, ErrInvalidResponsePayload
 	}
 
-	c.cache.Put(ctx, cacheKey, res, 10*time.Second)
+	return res, nil
+}
+
+func (c DropboxClient) getDownloadLinkTeam(
+	ctx context.Context,
+	path, token string,
+	userRes response.DropboxUserResponse,
+) (response.DropboxDownloadResponse, error) {
+	var res response.DropboxDownloadResponse
+
+	if userRes.RootInfo == nil || userRes.RootInfo.RootNamespaceID == "" {
+		return res, ErrInvalidResponsePayload
+	}
+
+	pathRootHeader, err := c.buildTeamHeader(userRes.RootInfo.RootNamespaceID)
+	if err != nil {
+		return res, err
+	}
+
+	if _, err := c.client.R().
+		SetContext(ctx).
+		SetBody(map[string]string{
+			"path": path,
+		}).
+		SetAuthToken(token).
+		SetHeader("Dropbox-API-Path-Root", pathRootHeader).
+		SetResult(&res).
+		Post("https://api.dropboxapi.com/2/files/get_temporary_link"); err != nil {
+		return res, fmt.Errorf("could not get dropbox temporary link: %w", err)
+	}
 
 	return res, nil
 }
 
-func (c DropboxClient) uploadFile(ctx context.Context, path, token, mode string, file io.Reader) (response.DropboxFileResponse, error) {
+func (c DropboxClient) uploadFileTeam(
+	ctx context.Context,
+	path, token, mode string,
+	file io.Reader,
+	userRes response.DropboxUserResponse,
+) (response.DropboxFileResponse, error) {
+	var res response.DropboxFileResponse
+
+	if userRes.RootInfo == nil || userRes.RootInfo.RootNamespaceID == "" {
+		return res, ErrInvalidResponsePayload
+	}
+
+	pathRootHeader, err := c.buildTeamHeader(userRes.RootInfo.RootNamespaceID)
+	if err != nil {
+		return res, err
+	}
+
+	req, err := http.NewRequest("POST", "https://content.dropboxapi.com/2/files/upload", file)
+	if err != nil {
+		return res, fmt.Errorf("could not build a request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Dropbox-API-Arg", fmt.Sprintf("{\"autorename\":true,\"mode\":\"%s\",\"mute\":false,\"path\":\"%s\",\"strict_conflict\":false}", mode, path))
+	req.Header.Set("Dropbox-API-Path-Root", pathRootHeader)
+	resp, err := otelhttp.DefaultClient.Do(req)
+	if err != nil {
+		return res, fmt.Errorf("could not send a request: %w", err)
+	}
+
+	defer resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return res, fmt.Errorf("could not decode response: %w", err)
+	}
+
+	if res.ID == "" {
+		return res, ErrInvalidResponsePayload
+	}
+
+	return res, nil
+}
+
+func (c DropboxClient) uploadFileStandard(
+	ctx context.Context,
+	path, token, mode string,
+	file io.Reader,
+) (response.DropboxFileResponse, error) {
 	var res response.DropboxFileResponse
 	req, err := http.NewRequest("POST", "https://content.dropboxapi.com/2/files/upload", file)
 	if err != nil {
@@ -210,6 +377,166 @@ func (c DropboxClient) uploadFile(ctx context.Context, path, token, mode string,
 	}
 
 	return res, nil
+}
+
+func (c DropboxClient) uploadFile(
+	ctx context.Context,
+	path, token, mode string,
+	file io.Reader,
+) (response.DropboxFileResponse, error) {
+	userRes, err := c.getUser(ctx, token)
+	if err != nil {
+		return c.uploadFileStandard(ctx, path, token, mode, file)
+	}
+
+	if c.isTeamAccount(userRes) {
+		if result, err := c.uploadFileTeam(ctx, path, token, mode, file, userRes); err == nil {
+			return result, nil
+		}
+	}
+
+	return c.uploadFileStandard(ctx, path, token, mode, file)
+}
+
+func (c DropboxClient) executeStandard(
+	ctx context.Context,
+	path, token string,
+	opType OperationType,
+) (any, error) {
+	switch opType {
+	case GetFile:
+		var res response.DropboxFileResponse
+		cacheKey := fmt.Sprintf("file:%s", path)
+		return c.getFileStandard(ctx, path, token, res, cacheKey)
+	case GetFileVersions:
+		var res response.DropboxFileVersionsResponse
+		cacheKey := fmt.Sprintf("history:%s", path)
+		return c.getFileVersionsStandard(ctx, path, token, res, cacheKey)
+	case GetDownloadLink:
+		var res response.DropboxDownloadResponse
+		cacheKey := fmt.Sprintf("downloadLink:%s", path)
+		return c.getDownloadLinkStandard(ctx, path, token, res, cacheKey)
+	default:
+		return nil, fmt.Errorf("unknown operation type: %d", opType)
+	}
+}
+
+func (c DropboxClient) executeTeam(
+	ctx context.Context,
+	path, token string,
+	userRes response.DropboxUserResponse,
+	opType OperationType,
+) (any, error) {
+	switch opType {
+	case GetFile:
+		return c.getFileTeam(ctx, path, token, userRes)
+	case GetFileVersions:
+		return c.getFileVersionsTeam(ctx, path, token, userRes)
+	case GetDownloadLink:
+		return c.getDownloadLinkTeam(ctx, path, token, userRes)
+	default:
+		return nil, fmt.Errorf("unknown operation type: %d", opType)
+	}
+}
+
+func (c DropboxClient) executeOperation(
+	ctx context.Context,
+	path, token string,
+	opType OperationType,
+) (any, error) {
+	userRes, err := c.getUser(ctx, token)
+	if err != nil {
+		return c.executeStandard(ctx, path, token, opType)
+	}
+
+	if c.isTeamAccount(userRes) {
+		if result, err := c.executeTeam(ctx, path, token, userRes, opType); err == nil {
+			return result, nil
+		}
+	}
+
+	return c.executeStandard(ctx, path, token, opType)
+}
+
+func (c DropboxClient) GetUser(ctx context.Context, token string) (response.DropboxUserResponse, error) {
+	return c.getUser(ctx, token)
+}
+
+func (c DropboxClient) GetFile(ctx context.Context, path, token string) (response.DropboxFileResponse, error) {
+	cacheKey := fmt.Sprintf("file:%s", path)
+
+	var res response.DropboxFileResponse
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
+	result, err := c.executeOperation(ctx, path, token, GetFile)
+	if err != nil {
+		return res, err
+	}
+
+	if fileRes, ok := result.(response.DropboxFileResponse); ok {
+		if fileRes.ID != "" {
+			c.cache.Put(ctx, cacheKey, fileRes, 10*time.Second)
+		}
+		return fileRes, nil
+	}
+
+	return res, fmt.Errorf("unexpected result type from GetFile operation")
+}
+
+func (c DropboxClient) GetFileVersions(ctx context.Context, path, token string) (response.DropboxFileVersionsResponse, error) {
+	cacheKey := fmt.Sprintf("history:%s", path)
+
+	var res response.DropboxFileVersionsResponse
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
+	result, err := c.executeOperation(ctx, path, token, GetFileVersions)
+	if err != nil {
+		return res, err
+	}
+
+	if versionsRes, ok := result.(response.DropboxFileVersionsResponse); ok {
+		if len(versionsRes.Entries) > 0 {
+			c.cache.Put(ctx, cacheKey, versionsRes, 10*time.Second)
+		}
+		versionsRes.ExcludeStale()
+		versionsRes.SortEntries()
+		return versionsRes, nil
+	}
+
+	return res, fmt.Errorf("unexpected result type from GetFileVersions operation")
+}
+
+func (c DropboxClient) GetDownloadLink(ctx context.Context, path, token string) (response.DropboxDownloadResponse, error) {
+	cacheKey := fmt.Sprintf("downloadLink:%s", path)
+
+	var res response.DropboxDownloadResponse
+	if val, _, err := c.cache.Get(ctx, cacheKey); err == nil {
+		if merr := mapstructure.Decode(val, &res); merr == nil {
+			return res, nil
+		}
+	}
+
+	result, err := c.executeOperation(ctx, path, token, GetDownloadLink)
+	if err != nil {
+		return res, err
+	}
+
+	if linkRes, ok := result.(response.DropboxDownloadResponse); ok {
+		if linkRes.Link != "" {
+			c.cache.Put(ctx, cacheKey, linkRes, 10*time.Second)
+		}
+		return linkRes, nil
+	}
+
+	return res, fmt.Errorf("unexpected result type from GetDownloadLink operation")
 }
 
 func (c DropboxClient) CreateFile(ctx context.Context, path, token string, file io.Reader) (response.DropboxFileResponse, error) {

@@ -92,6 +92,7 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 	id := strings.TrimSpace(uid)
 
 	if id == "" {
+		s.logger.Debugf("user ID is empty or blank")
 		return domain.UserAccess{}, &InvalidServiceParameterError{
 			Name:   "UID",
 			Reason: "Should not be blank",
@@ -108,10 +109,14 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 	}
 
 	if user.Validate() != nil {
+		s.logger.Debugf("user not found in cache or cache entry invalid, querying database for user: %s", id)
 		user, err = s.adapter.SelectUser(ctx, id)
 		if err != nil {
+			s.logger.Debugf("failed to select user %s from database: %v", id, err)
 			return user, fmt.Errorf("could not select user: %w", err)
 		}
+
+		s.logger.Debugf("successfully retrieved user %s from database", id)
 
 		exp, err := time.Parse(time.RFC3339, user.Expiry)
 		if err != nil {

@@ -4,16 +4,16 @@ services:
     build:
       context: .
       target: gateway
-    image: onlyoffice/dropbox-gateway:${PRODUCT_VERSION}
+    image: ${REGISTRY}/dropbox-gateway:${PRODUCT_VERSION}
 
   auth:
     build:
       context: .
       target: auth
-    image: onlyoffice/dropbox-auth:${PRODUCT_VERSION}
+    image: ${REGISTRY}/dropbox-auth:${PRODUCT_VERSION}
 
   callback:
     build:
       context: .
       target: callback
-    image: onlyoffice/dropbox-callback:${PRODUCT_VERSION}
+    image: ${REGISTRY}/dropbox-callback:${PRODUCT_VERSION}
