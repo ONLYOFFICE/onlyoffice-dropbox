@@ -29,5 +29,6 @@
     "passwordRequired": "Dateipasswort erforderlich",
     "passwordInformation": "Die Dateikopie ist nicht passwortgeschützt",
     "passwordInvalid": "Falsches Passwort",
-    "xmlInformation": "Bitte wählen Sie den Typ, den Sie öffnen möchten:"
+    "xmlInformation": "Bitte wählen Sie den Typ, den Sie öffnen möchten:",
+    "loading": "Loading... DE"
 }

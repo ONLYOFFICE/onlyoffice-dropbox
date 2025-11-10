@@ -29,6 +29,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 )
 
@@ -82,12 +83,23 @@ func (c *DesktopController) BuildEntryPage() http.HandlerFunc {
 			return
 		}
 
+		locale := usr.Locale
+		if locale == "" {
+			locale = "en"
+		}
+
+		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
+		loading := loc.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "loading",
+		})
+
 		if err := embeddable.DesktopPage.Execute(rw, map[string]any{
 			"displayName": usr.Name.DisplayName,
 			"email":       usr.Email,
 			"domain":      r.Host,
 			"provider":    "dropbox",
 			"userId":      usr.AccountID,
+			"loading":     loading,
 		}); err != nil {
 			c.logger.Errorf("could not execute desktop template: %s", err.Error())
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)

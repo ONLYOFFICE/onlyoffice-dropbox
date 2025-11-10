@@ -29,5 +29,6 @@
     "passwordRequired": "Senha do arquivo necessária",
     "passwordInformation": "A cópia do arquivo não será protegida por senha",
     "passwordInvalid": "Senha incorreta",
-    "xmlInformation": "Escolha o tipo que deseja abrir:"
+    "xmlInformation": "Escolha o tipo que deseja abrir:",
+    "loading": "Loading... PT"
 }

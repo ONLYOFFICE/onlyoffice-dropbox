@@ -29,5 +29,6 @@
     "passwordRequired": "Se requiere contraseña para el archivo",
     "passwordInformation": "La copia del archivo no estará protegida por contraseña",
     "passwordInvalid": "Contraseña incorrecta",
-    "xmlInformation": "Por favor, elija el tipo que desea abrir:"
+    "xmlInformation": "Por favor, elija el tipo que desea abrir:",
+    "loading": "Loading... ES"
 }
