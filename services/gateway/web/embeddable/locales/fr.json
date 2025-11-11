@@ -29,5 +29,6 @@
     "passwordRequired": "Mot de passe du fichier requis",
     "passwordInformation": "La copie du fichier ne sera pas protégée par un mot de passe",
     "passwordInvalid": "Mot de passe incorrect",
-    "xmlInformation": "Veuillez choisir le type que vous souhaitez ouvrir :"
+    "xmlInformation": "Veuillez choisir le type que vous souhaitez ouvrir :",
+    "loading": "Loading... FR"
 }

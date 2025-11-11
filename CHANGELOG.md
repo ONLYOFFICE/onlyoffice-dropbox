@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.2.0
+## Added
+- desktop support
+
 ## 1.1.1
 ## Changed
 - added business account team folder support

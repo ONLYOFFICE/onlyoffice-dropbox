@@ -1,0 +1,130 @@
+<!--*
+ *
+ * (c) Copyright Ascensio System SIA 2025
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+*-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+    <title>ONLYOFFICE</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            min-height: 100vh;
+
+            margin: 0;
+            padding: 0;
+
+            background: white;
+        }
+
+        .loader {
+            display: flex;
+            align-items: center;
+
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 22px;
+            height: 22px;
+
+            flex-shrink: 0;
+
+            margin-right: 12px;
+
+            border: 1.65px solid transparent;
+            border-top: 1.65px solid #444444;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loader-text {
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 15px;
+
+            line-height: 20px;
+            letter-spacing: 0.02em;
+            
+            color: #444444;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1a1a1a;
+            }
+
+            .spinner {
+                border-top: 1.65px solid #FFFFFF;
+            }
+
+            .loader-text {
+                color: #FFFFFFCC;
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <span class="loader-text">{{ .loading }}</span>
+    </div>
+</body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var uiTheme = isDark ? "theme-dark" : "theme-light";
+        var params = {
+            displayName: "{{ .displayName }}",
+            email: "{{ .email }}",
+            domain: "{{ .domain }}",
+            provider: "{{ .provider }}",
+            uiTheme: uiTheme,
+            userId: "{{ .userId }}",
+        };
+
+        window.AscDesktopEditor.execCommand("portal:login", JSON.stringify(params));
+        setTimeout(function() {
+            window.location.href = "https://www.dropbox.com/home";
+        }, 500);
+    });
+</script>
+
+</html>
