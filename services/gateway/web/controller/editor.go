@@ -201,7 +201,7 @@ func (c *EditorController) prepareDocumentConfig(
 			Edit:                 format.IsEditable() || (format.IsLossyEditable() && token["force_edit"].(bool)),
 			Comment:              true,
 			Download:             true,
-			Print:                false,
+			Print:                true,
 			Review:               false,
 			Copy:                 true,
 			ModifyContentControl: true,
