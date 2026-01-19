@@ -149,7 +149,11 @@
 
     const onAppReady = () => {
       innerAlert("Document editor ready");
-      document.getElementsByClassName('container').item(0).remove();
+      const container = document.getElementsByClassName('container').item(0);
+      if (container) {
+        container.style.display = 'none';
+      }
+
       setTimeout(() => {
         document.getElementsByClassName('form').item(0).style.visibility = "visible";
       }, 150);
@@ -188,12 +192,36 @@
       document.location.reload();
     };
 
+    const onOutdatedVersion = () => {
+      innerAlert("Document version is outdated, reloading...");
+      
+      if (docEditor) {
+        docEditor.destroyEditor();
+        docEditor = null;
+      }
+      
+      const editorForm = document.getElementById('editor-form');
+      if (editorForm) {
+        editorForm.style.visibility = 'hidden';
+      }
+
+      const container = document.querySelector('.container');
+      if (container) {
+        container.style.display = 'block';
+      }
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 6500);
+    };
+
     const events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
       "onRequestHistory": onRequestHistory,
       "onRequestHistoryData": onRequestHistoryData,
       "onRequestHistoryClose": onRequestHistoryClose,
+      "onOutdatedVersion": onOutdatedVersion,
     };
 
     var config = {{ .config }};
