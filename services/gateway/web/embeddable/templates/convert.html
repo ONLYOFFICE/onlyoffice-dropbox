@@ -63,12 +63,29 @@
             margin: 0;
         }
 
+        .icon {
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
+        }
+
+        div[style*="display: flex; align-items: center;"] > div {
+            flex-shrink: 0;
+        }
+
         label {
             font-family: 'Lato';
             font-weight: 600;
             font-size: 13px;
             line-height: 20px;
             color: #333333;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+
+        input[type="radio"] {
+            vertical-align: middle;
+            cursor: pointer;
         }
 
         span {
