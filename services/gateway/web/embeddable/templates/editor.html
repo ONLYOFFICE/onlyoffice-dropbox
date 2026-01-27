@@ -28,20 +28,20 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     .container_button {
+      position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 40px;
-      width: 119px;
-      padding: 12px 16px 12px 16px;
-      background-color: #0061D5;
+      margin: 5px;
+      padding: 12px 16px;
       border-radius: 6px;
       border-width: 0;
+      cursor: pointer;
+      z-index: 2;
       color: white;
       transition: all 0.2s ease-in;
-      cursor: pointer;
-      position: relative;
-      z-index: 2;
+      background-color: #0061D5;
     }
 
     .container_button:focus,
@@ -107,8 +107,10 @@
     <div class="container" style="z-index: 1;">
       <div
         style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
-        {{template "spinner"}}
-        <button class="container_button" onclick="window.close()" style="margin-top: 2rem; width: 110px;">
+        <div style="display: flex; justify-content: center; min-width: 100px;">
+          {{template "spinner"}}
+        </div>
+        <button class="container_button" onclick="window.close()" style="margin-top: 32px; width: auto; min-width: 100px;">
           <p class="buttontext">{{.cancelButton}}</p>
         </button>
       </div>
