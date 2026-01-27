@@ -50,7 +50,7 @@ var (
 		templateFiles, "templates/email.html",
 	))
 	DesktopPage = template.Must(template.ParseFS(
-		templateFiles, "templates/desktop.html",
+		templateFiles, "templates/desktop.html", "templates/spinner.html",
 	))
 )
 

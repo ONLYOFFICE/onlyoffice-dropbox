@@ -25,76 +25,27 @@
     <title>ONLYOFFICE</title>
     <style>
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            min-height: 100vh;
-
             margin: 0;
             padding: 0;
-
-            background: white;
-        }
-
-        .loader {
-            display: flex;
-            align-items: center;
-
-            gap: 8px;
-        }
-
-        .spinner {
-            width: 22px;
-            height: 22px;
-
-            flex-shrink: 0;
-
-            margin-right: 12px;
-
-            border: 1.65px solid transparent;
-            border-top: 1.65px solid #444444;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        .loader-text {
-            font-family: 'Segoe UI', sans-serif;
-            font-weight: 400;
-            font-style: normal;
-            font-size: 15px;
-
-            line-height: 20px;
-            letter-spacing: 0.02em;
-            
-            color: #444444;
+            width: 100vw;
+            height: 100vh;
+            background: #FFFFFF;
         }
 
         @media (prefers-color-scheme: dark) {
             body {
-                background: #1a1a1a;
+                background: #1A1918;
             }
-
-            .spinner {
-                border-top: 1.65px solid #FFFFFF;
-            }
-
-            .loader-text {
-                color: #FFFFFFCC;
-            }
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 
 <body>
-    <div class="loader">
-        <div class="spinner"></div>
-        <span class="loader-text">{{ .loading }}</span>
+    <div
+        style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="display: flex; justify-content: center; min-width: 100px;">
+            {{template "spinner"}}
+        </div>
     </div>
 </body>
 
