@@ -197,7 +197,7 @@ func (c *EditorController) prepareDocumentConfig(
 		}
 
 		config.Document.FileType = format.Name
-		config.Document.Permissions = response.Permissions{
+		permissions := response.Permissions{
 			Edit:                 format.IsEditable() || (format.IsLossyEditable() && token["force_edit"].(bool)),
 			Comment:              true,
 			Download:             true,
@@ -206,6 +206,14 @@ func (c *EditorController) prepareDocumentConfig(
 			Copy:                 true,
 			ModifyContentControl: true,
 			ModifyFilter:         true,
+		}
+
+		config.Document.Permissions = permissions
+
+		if !permissions.Edit {
+			config.EditorConfig.Mode = "view"
+		} else {
+			config.EditorConfig.Mode = "edit"
 		}
 
 		if !config.Document.Permissions.Edit {

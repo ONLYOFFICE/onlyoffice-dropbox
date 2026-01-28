@@ -66,6 +66,7 @@ type EditorConfig struct {
 	CallbackURL   string        `json:"callbackUrl"`
 	Customization Customization `json:"customization"`
 	Lang          string        `json:"lang,omitempty"`
+	Mode          string        `json:"mode,omitempty"`
 }
 
 type User struct {
