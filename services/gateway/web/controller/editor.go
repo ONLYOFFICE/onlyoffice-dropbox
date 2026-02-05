@@ -342,7 +342,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 		config.Token = sig
 		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"file":    file.ID,
-			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", config.ServerURL),
+			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js?shardkey=%s", config.ServerURL, config.Document.Key),
 			"config":  string(config.ToJSON()),
 			"docType": config.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
