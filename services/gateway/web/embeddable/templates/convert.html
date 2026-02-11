@@ -1,27 +1,18 @@
 <!--*
  *
- * (c) Copyright Ascensio System SIA 2025
+ * (c) Copyright Ascensio System SIA 2026
  *
- * The MIT License (MIT)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations 
 *-->
 <!DOCTYPE html>
 <html lang="en">
@@ -40,15 +31,22 @@
             display: none;
         }
 
-        html {
+        html, body {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            overflow: hidden;
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
 
-        html::-webkit-scrollbar {
+        body {
+            background: #FFFFFF;
+            color: #333333;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar {
             display: none;
         }
 
@@ -65,12 +63,29 @@
             margin: 0;
         }
 
+        .icon {
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
+        }
+
+        div[style*="display: flex; align-items: center;"] > div {
+            flex-shrink: 0;
+        }
+
         label {
             font-family: 'Lato';
             font-weight: 600;
             font-size: 13px;
             line-height: 20px;
             color: #333333;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+
+        input[type="radio"] {
+            vertical-align: middle;
+            cursor: pointer;
         }
 
         span {
@@ -82,6 +97,9 @@
         }
 
         .button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
             height: 40px;
             width: 100%;
             padding: 12px 16px 12px 16px;
@@ -102,8 +120,26 @@
             color: black;
         }
 
+        .loader_cancel_button {
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+            padding: 12px 16px;
+            margin: 32px 5px 5px 5px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background-color: #0061D5;
+            color: white;
+            transition: all 0.2s ease-in;
+        }
+
         .button:focus,
-        .button:hover {
+        .button:hover,
+        .loader_cancel_button:focus,
+        .loader_cancel_button:hover {
             box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24),
                         0 17px 50px 0 rgba(0, 0, 0, 0.19);
         }
@@ -288,6 +324,14 @@
                        scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
         }
 
+        .loading-container {
+            background: #FFFFFF;
+        }
+
+        .loading-container[x-cloak] {
+            display: none !important;
+        }
+
         @media (prefers-color-scheme: dark) {
             body {
                 background: #1A1918;
@@ -319,6 +363,16 @@
                 border: none;
                 background-color: #FFFFFF1A;
                 color: #FFFFFF;
+            }
+
+            .loader_cancel_button {
+                background-color: #F7F5F2;
+                color: #1E1919;
+            }
+
+            .loader_cancel_button:focus,
+            .loader_cancel_button:hover {
+                box-shadow: none;
             }
 
             #tooltip {
@@ -372,6 +426,10 @@
             input[type="radio"]:checked + .xlsx {
                 background-color: #469D46;
                 color: white;
+            }
+
+            .loading-container {
+                background: #1A1918;
             }
 
             #tooltip {
@@ -537,8 +595,23 @@
             <div id="error" x-show="!loading && error" hidden>
                 {{template "error" .}}
             </div>
-            <div x-show="loading && !error">
-                {{template "spinner"}}
+            <div x-show="loading && !error" x-cloak class="loading-container" style="display: none;">
+                <div style="
+                    position: relative;
+                    width: 100vw;
+                    height: 100vh;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                ">
+                    <div style="display: flex; justify-content: center; min-width: 100px;">
+                        {{template "spinner"}}
+                    </div>
+                    <button class="loader_cancel_button" onclick="window.close();" style="width: auto; min-width: 100px;">
+                        <p class="buttontext">{{.cancelButton}}</p>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

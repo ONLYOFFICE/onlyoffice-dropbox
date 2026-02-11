@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2025
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,9 @@ type DropboxHTTPService struct {
 	editorController  controller.EditorController
 	convertController convert.ConvertController
 	historyController controller.HistoryController
+	desktopController controller.DesktopController
 	sessionMiddleware middleware.SessionMiddleware
+	desktopMiddleware middleware.DesktopMiddleware
 	credentials       *oauth2.Config
 }
 
@@ -48,7 +50,9 @@ func NewServer(
 	editorController controller.EditorController,
 	convertController convert.ConvertController,
 	historyController controller.HistoryController,
+	desktopController controller.DesktopController,
 	sessionMiddleware middleware.SessionMiddleware,
+	desktopMiddleware middleware.DesktopMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
 	service := DropboxHTTPService{
@@ -57,7 +61,9 @@ func NewServer(
 		editorController:  editorController,
 		convertController: convertController,
 		historyController: historyController,
+		desktopController: desktopController,
 		sessionMiddleware: sessionMiddleware,
+		desktopMiddleware: desktopMiddleware,
 		credentials:       credentials,
 	}
 
@@ -95,7 +101,11 @@ func (s *DropboxHTTPService) InitializeRoutes() {
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
 
-	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter()
+	desktop := s.mux.NewRoute().PathPrefix("/app").Subrouter().StrictSlash(true)
+	desktop.Use(s.desktopMiddleware.RequireDesktop, s.sessionMiddleware.Protect, sizeMiddleware)
+	desktop.Handle("/", s.desktopController.BuildEntryPage()).Methods(http.MethodGet)
+
+	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter().StrictSlash(true)
 	auth.Handle("/install", s.authController.BuildGetAuth()).Methods(http.MethodGet)
 	auth.Handle("/redirect", s.authController.BuildGetRedirect()).Methods(http.MethodGet)
 

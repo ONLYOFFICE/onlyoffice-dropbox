@@ -29,5 +29,6 @@
     "passwordRequired": "ファイルへのパスワードが必要です",
     "passwordInformation": "ファイルのコピーはパスワードで保護されません",
     "passwordInvalid": "無効なパスワード",
-    "xmlInformation": "開きたいタイプを選択してください："
+    "xmlInformation": "開きたいタイプを選択してください：",
+    "loading": "Loading... JP"
 }

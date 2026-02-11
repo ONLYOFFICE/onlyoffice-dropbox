@@ -11,3 +11,9 @@
     :why: Mozilla Public License 2.0
     :versions: []
     :when: 2025-11-10 07:38:18.125640300 Z
+- - :approve
+  - github.com/hashicorp/serf
+  - :who:
+    :why: Mozilla Public License 2.0
+    :versions: []
+    :when: 2025-12-10 11:04:47.506235000 Z

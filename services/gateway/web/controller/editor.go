@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2025
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -197,15 +197,23 @@ func (c *EditorController) prepareDocumentConfig(
 		}
 
 		config.Document.FileType = format.Name
-		config.Document.Permissions = response.Permissions{
+		permissions := response.Permissions{
 			Edit:                 format.IsEditable() || (format.IsLossyEditable() && token["force_edit"].(bool)),
 			Comment:              true,
 			Download:             true,
-			Print:                false,
+			Print:                true,
 			Review:               false,
 			Copy:                 true,
 			ModifyContentControl: true,
 			ModifyFilter:         true,
+		}
+
+		config.Document.Permissions = permissions
+
+		if !permissions.Edit {
+			config.EditorConfig.Mode = "view"
+		} else {
+			config.EditorConfig.Mode = "edit"
 		}
 
 		if !config.Document.Permissions.Edit {
@@ -334,7 +342,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 		config.Token = sig
 		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"file":    file.ID,
-			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", config.ServerURL),
+			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js?shardkey=%s", config.ServerURL, config.Document.Key),
 			"config":  string(config.ToJSON()),
 			"docType": config.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{

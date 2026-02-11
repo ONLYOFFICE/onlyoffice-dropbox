@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2025
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,7 +99,10 @@ func (c DropboxClient) getUser(ctx context.Context, token string) (response.Drop
 	}
 
 	if _, err := c.client.R().
+		SetContext(ctx).
 		SetAuthToken(token).
+		SetHeader("Content-Type", "application/json").
+		SetBody([]byte("null")).
 		SetResult(&res).
 		Post("https://api.dropboxapi.com/2/users/get_current_account"); err != nil {
 		return res, err
@@ -142,6 +145,7 @@ func (c DropboxClient) getFileStandard(
 ) (response.DropboxFileResponse, error) {
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]any{
 			"include_deleted":                     false,
 			"include_has_explicit_shared_members": false,
@@ -179,6 +183,7 @@ func (c DropboxClient) getFileTeam(
 
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]any{
 			"include_deleted":                     false,
 			"include_has_explicit_shared_members": false,
@@ -203,6 +208,7 @@ func (c DropboxClient) getFileVersionsStandard(
 ) (response.DropboxFileVersionsResponse, error) {
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(request.DropboxFileVersionsRequest{
 			Limit: 50,
 			Mode:  "id",
@@ -235,6 +241,7 @@ func (c DropboxClient) getFileVersionsTeam(
 
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(request.DropboxFileVersionsRequest{
 			Limit: 50,
 			Mode:  "id",
@@ -258,6 +265,7 @@ func (c DropboxClient) getDownloadLinkStandard(
 ) (response.DropboxDownloadResponse, error) {
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
 			"path": path,
 		}).
@@ -292,6 +300,7 @@ func (c DropboxClient) getDownloadLinkTeam(
 
 	if _, err := c.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
 			"path": path,
 		}).
@@ -549,6 +558,7 @@ func (c DropboxClient) UploadFile(ctx context.Context, path, token string, file 
 
 func (c DropboxClient) SaveFileFromURL(ctx context.Context, path, url, token string) error {
 	if _, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
 			"path": path,
 			"url":  url,

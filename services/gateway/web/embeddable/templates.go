@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2025
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,9 @@ var (
 	))
 	EmailPage = template.Must(template.ParseFS(
 		templateFiles, "templates/email.html",
+	))
+	DesktopPage = template.Must(template.ParseFS(
+		templateFiles, "templates/desktop.html", "templates/spinner.html",
 	))
 )
 

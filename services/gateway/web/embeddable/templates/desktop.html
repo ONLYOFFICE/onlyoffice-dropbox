@@ -1,0 +1,72 @@
+<!--*
+ *
+ * (c) Copyright Ascensio System SIA 2026
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations 
+*-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+    <title>ONLYOFFICE</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #FFFFFF;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1A1918;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div
+        style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="display: flex; justify-content: center; min-width: 100px;">
+            {{template "spinner"}}
+        </div>
+    </div>
+</body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var uiTheme = isDark ? "theme-dark" : "theme-light";
+        var params = {
+            displayName: "{{ .displayName }}",
+            email: "{{ .email }}",
+            domain: "{{ .domain }}",
+            provider: "{{ .provider }}",
+            uiTheme: uiTheme,
+            userId: "{{ .userId }}",
+        };
+
+        window.AscDesktopEditor.execCommand("portal:login", JSON.stringify(params));
+        setTimeout(function() {
+            window.location.href = "https://www.dropbox.com/home";
+        }, 500);
+    });
+</script>
+
+</html>
