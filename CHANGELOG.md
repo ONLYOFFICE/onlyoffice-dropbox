@@ -2,7 +2,7 @@
 
 ## 1.2.0
 ## Added
-- desktop support
+- support ONLYOFFICE Desktop
 
 ## 1.1.1
 ## Changed
