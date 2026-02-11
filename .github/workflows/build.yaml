@@ -48,11 +48,10 @@ jobs:
           REF: ${{ github.ref_name }}
           MANUAL_TAG: ${{ github.event.inputs.tag }}
         run: |
-          echo "APP_VERSION=1.1.1" >> "$GITHUB_ENV" # Should be set!
           if [[ "$EVENT" == 'push' && "$REF" == 'develop' ]]; then
-           echo "RC_TAG=rc.${{ github.run_number }}" >> "$GITHUB_ENV"
+           echo "RC_TAG=1.1.1-rc.${{ github.run_number }}" >> "$GITHUB_ENV"
           elif [[ "$EVENT" == 'workflow_dispatch' && -z "$TAG" ]]; then
-           echo "RC_TAG=rc.${{ github.run_number }}" >> "$GITHUB_ENV"
+           echo "RC_TAG=1.1.1-rc.${{ github.run_number }}" >> "$GITHUB_ENV"
           fi
 
       - name: Publish Image
@@ -65,7 +64,7 @@ jobs:
           file: Dockerfile
           push: true
           platforms: linux/amd64
-          tags: ${{ env.DOCKER_HUB_NAMESPACE }}/dropbox-${{ matrix.service }}:${{ env.APP_VERSION }}-${{ github.event.inputs.tag || env.RC_TAG }}
+          tags: ${{ env.DOCKER_HUB_NAMESPACE }}/dropbox-${{ matrix.service }}:${{ github.event.inputs.tag || env.RC_TAG }}
 
   update:
     name: Update connector
