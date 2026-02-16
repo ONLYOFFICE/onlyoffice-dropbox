@@ -54,4 +54,4 @@ If you have questions, issues, or suggestions, reach out through any of the foll
 - 🐞 **Report issues:** [GitHub Issues](https://github.com/ONLYOFFICE/onlyoffice-dropbox/issues)
 - 💬 **Community forum:** [ONLYOFFICE Forum](https://community.onlyoffice.com/)
 - 💡 **Feedback platform:** [Your Voice Matters](https://feedback.onlyoffice.com/forums/966080-your-voice-matters)
-- 👨‍💻 **Help for developers** [API documentation](https://api.onlyoffice.com)
+- 👨‍💻 **Help for developers:** [API documentation](https://api.onlyoffice.com)
