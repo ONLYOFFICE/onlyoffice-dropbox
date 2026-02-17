@@ -10,7 +10,7 @@ With this integration, Dropbox users can work on their office documents without 
 2. Select **Open in → ONLYOFFICE Docs**.
 3. The selected document, spreadsheet, or presentation will open in a new browser tab using the corresponding ONLYOFFICE editor in full-screen mode.
 
-> ✍️ **Note:** This app uses a **pre-configured ONLYOFFICE Docs Cloud tenant**, so there’s no need for manual configuration.
+> ✍️ **Note:** This app uses a **pre-configured ONLYOFFICE Docs Cloud tenant**, so there's no need for manual configuration.
 
 ## ⚙️ Installation guide
 
@@ -39,7 +39,7 @@ ONLYOFFICE for Dropbox supports a wide range of office file formats:
 
 > ⚠️ **Recommendation:** Convert non-OOXML files before editing to ensure full compatibility and maintain formatting fidelity.
 
-## ℹ️ Project information
+## ℹ Project information
 
 🌐 Official website: [onlyoffice.com](https://www.onlyoffice.com/office-for-dropbox)
 
@@ -47,7 +47,7 @@ ONLYOFFICE for Dropbox supports a wide range of office file formats:
 
 ## 💬 User feedback & support
 
-We welcome community participation, feedback, and collaboration.  
+We welcome community participation, feedback, and collaboration.
 
 If you have questions, issues, or suggestions, reach out through any of the following channels:
 
