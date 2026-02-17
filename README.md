@@ -39,7 +39,7 @@ ONLYOFFICE for Dropbox supports a wide range of office file formats:
 
 > ⚠️ **Recommendation:** Convert non-OOXML files before editing to ensure full compatibility and maintain formatting fidelity.
 
-## ℹ Project information
+## Project information
 
 🌐 Official website: [onlyoffice.com](https://www.onlyoffice.com/office-for-dropbox)
 
