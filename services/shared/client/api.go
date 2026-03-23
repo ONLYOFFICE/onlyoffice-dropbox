@@ -49,6 +49,22 @@ const (
 
 var ErrInvalidResponsePayload = errors.New("invalid response payload")
 
+func newOtelClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		Transport: otelhttp.NewTransport(&http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   15 * time.Second,
+			ResponseHeaderTimeout: 8 * time.Second,
+			ExpectContinueTimeout: 4 * time.Second,
+		}),
+	}
+}
+
+var otelHttpClient = newOtelClient(10 * time.Second)
+
 type DropboxClient struct {
 	client      *resty.Client
 	cache       cache.Cache
@@ -59,17 +75,8 @@ func NewDropboxAuthClient(
 	cache cache.Cache,
 	credentials *oauth2.Config,
 ) DropboxClient {
-	otelClient := otelhttp.DefaultClient
-	otelClient.Transport = otelhttp.NewTransport(&http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   15 * time.Second,
-		ResponseHeaderTimeout: 8 * time.Second,
-		ExpectContinueTimeout: 4 * time.Second,
-	})
 	return DropboxClient{
-		client: resty.NewWithClient(otelClient).
+		client: resty.NewWithClient(otelHttpClient).
 			SetRedirectPolicy(resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			})).
@@ -340,7 +347,7 @@ func (c DropboxClient) uploadFileTeam(
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Dropbox-API-Arg", fmt.Sprintf("{\"autorename\":true,\"mode\":\"%s\",\"mute\":false,\"path\":\"%s\",\"strict_conflict\":false}", mode, path))
 	req.Header.Set("Dropbox-API-Path-Root", pathRootHeader)
-	resp, err := otelhttp.DefaultClient.Do(req)
+	resp, err := otelHttpClient.Do(req)
 	if err != nil {
 		return res, fmt.Errorf("could not send a request: %w", err)
 	}
@@ -371,7 +378,7 @@ func (c DropboxClient) uploadFileStandard(
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Dropbox-API-Arg", fmt.Sprintf("{\"autorename\":true,\"mode\":\"%s\",\"mute\":false,\"path\":\"%s\",\"strict_conflict\":false}", mode, path))
-	resp, err := otelhttp.DefaultClient.Do(req)
+	resp, err := otelHttpClient.Do(req)
 	if err != nil {
 		return res, fmt.Errorf("could not send a request: %w", err)
 	}

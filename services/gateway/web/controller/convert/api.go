@@ -53,6 +53,11 @@ var (
 	errConversionPasswordRequiredError = errors.New("could not convert protected file")
 )
 
+var otelClient = &http.Client{
+	Timeout:   10 * time.Second,
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
 type ConvertController struct {
 	client        client.Client
 	api           aclient.DropboxClient
@@ -193,7 +198,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 	}
 
 	req.Header.Set("Accept", "application/json")
-	resp, err := otelhttp.DefaultClient.Do(req)
+	resp, err := otelClient.Do(req)
 	if err != nil {
 		c.logger.Errorf("could not send conversion API request: %s", err.Error())
 		return nil, err
@@ -219,7 +224,13 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 		return nil, errConversionErrorOccurred
 	}
 
-	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
+	downloadReq, err := http.NewRequestWithContext(uctx, http.MethodGet, cresp.FileURL, nil)
+	if err != nil {
+		c.logger.Errorf("could not build converted file request: %s", err.Error())
+		return nil, err
+	}
+
+	cfile, err := otelClient.Do(downloadReq)
 	if err != nil {
 		c.logger.Errorf("could not retrieve converted file: %s", err.Error())
 		return nil, err
