@@ -42,6 +42,10 @@ import (
 )
 
 var ErrInvalidContentLength = errors.New("content length exceeds the limit")
+var otelClient = &http.Client{
+	Timeout:   10 * time.Second,
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
 
 type CallbackController struct {
 	client      client.Client
@@ -163,7 +167,15 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 					return
 				}
 
-				respFile, err := otelhttp.Get(tctx, body.URL)
+				fileReq, err := http.NewRequestWithContext(tctx, http.MethodGet, body.URL, nil)
+				if err != nil {
+					c.sendErrorResponse(fmt.Sprintf(
+						"could not process a callback request with status 2: %s", err.Error(),
+					), rw)
+					return
+				}
+
+				respFile, err := otelClient.Do(fileReq)
 				if err != nil {
 					c.sendErrorResponse(fmt.Sprintf(
 						"could not process a callback request with status 2: %s", err.Error(),
