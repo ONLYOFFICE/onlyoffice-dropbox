@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.2.1
+## Changed
+- update of vulnerable dependencies
+
 ## 1.2.0
 ## Added
 - support ONLYOFFICE Desktop
