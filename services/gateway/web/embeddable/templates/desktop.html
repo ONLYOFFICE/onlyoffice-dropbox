@@ -51,14 +51,11 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var uiTheme = isDark ? "theme-dark" : "theme-light";
         var params = {
             displayName: "{{ .displayName }}",
             email: "{{ .email }}",
             domain: "{{ .domain }}",
             provider: "{{ .provider }}",
-            uiTheme: uiTheme,
             userId: "{{ .userId }}",
         };
 

@@ -1,6 +1,6 @@
 namespace: "dropbox"
 name: "gateway"
-version: "1.0.0"
+version: "1.2.1"
 address: ":6044"
 repl_address: ":9999"
 debug: false
