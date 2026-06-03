@@ -17,14 +17,12 @@ With this integration, Dropbox users can work on their office documents without 
 Easily connect ONLYOFFICE to your Dropbox account by following these steps:
 
 1. Sign in to your [Dropbox](https://www.dropbox.com/) account.
-2. Go to the [Dropbox App Center](https://www.dropbox.com/apps).
-3. Search for **ONLYOFFICE Docs** and open the app page.
-4. Click **Connect** or **Add integration**.
-5. Grant the requested permissions to link your Dropbox with ONLYOFFICE Docs.
+2. Follow the [link](https://dropbox.onlyoffice.com/oauth/redirect).
+3. Grant the requested permissions to link your Dropbox with ONLYOFFICE Docs.
 
 Once connected, you can start opening and editing supported files directly from your Dropbox interface.
 
-> ⚠️ **Tip:** To manage or disconnect the integration later, visit **Settings → Connected Apps** in your Dropbox account and select **Disconnect**.
+> ⚠️ **Tip:** To manage or disconnect the integration later, visit **Settings → [Apps](https://www.dropbox.com/account/connected_apps)** in your Dropbox account and select **Disconnect**.
 
 ## 📁 Supported file formats
 
