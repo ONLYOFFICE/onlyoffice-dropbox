@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.2.2
+## Changed
+- fix ttl issue
+
 ## 1.2.1
 ## Changed
 - update of vulnerable dependencies
