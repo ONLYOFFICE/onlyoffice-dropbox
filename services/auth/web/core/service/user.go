@@ -123,8 +123,11 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 			return user, fmt.Errorf("could not parse user expiration: %w", err)
 		}
 
-		if err := s.cache.Put(ctx, id, user, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
-			s.logger.Warnf("could not put user to the cache: %w", err)
+		const cacheTTL = 2 * time.Second
+		if time.Until(exp) > cacheTTL {
+			if err := s.cache.Put(ctx, id, user, cacheTTL); err != nil {
+				s.logger.Warnf("could not put user to the cache: %w", err)
+			}
 		}
 	}
 
@@ -174,12 +177,7 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 		Expiry:       user.Expiry,
 	}
 
-	exp, err := time.Parse(time.RFC3339, user.Expiry)
-	if err != nil {
-		return user, fmt.Errorf("could not parse user expiration: %w", err)
-	}
-
-	if err := s.cache.Put(ctx, euser.ID, euser, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
+	if err := s.cache.Put(ctx, euser.ID, euser, 2*time.Second); err != nil {
 		s.logger.Warnf("could not populate cache with a user %s instance: %s", euser.ID, err.Error())
 		if err := s.cache.Delete(ctx, euser.ID); err != nil {
 			s.logger.Warnf("could not remove user from the cache: %w", err)
