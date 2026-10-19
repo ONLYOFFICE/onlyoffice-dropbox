@@ -31,7 +31,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/stretchr/testify/assert"
-	"go-micro.dev/v4/logger"
+	"go-micro.dev/v5/logger"
 	"golang.org/x/oauth2"
 )
 

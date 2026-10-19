@@ -34,7 +34,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/go-resty/resty/v2"
 	"github.com/mitchellh/mapstructure"
-	"go-micro.dev/v4/cache"
+	"go-micro.dev/v5/cache"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )

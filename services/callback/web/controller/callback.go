@@ -35,8 +35,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	plog "github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"go-micro.dev/v4/client"
-	"go-micro.dev/v4/util/backoff"
+	"go-micro.dev/v5/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 )
@@ -106,7 +105,7 @@ func (c CallbackController) sendErrorResponse(errorText string, rw http.Response
 	if _, err := rw.Write(response.CallbackResponse{
 		Error: 1,
 	}.ToJSON()); err != nil {
-		c.logger.Errorf("could not send a response: %w", err)
+		c.logger.Errorf("could not send a response: %v", err)
 	}
 }
 
@@ -158,9 +157,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 				var ures response.UserResponse
 				if err := c.client.Call(tctx, req, &ures,
 					client.WithRetries(3),
-					client.WithBackoff(func(ctx context.Context, req client.Request, attempts int) (time.Duration, error) {
-						return backoff.Do(attempts), nil
-					})); err != nil {
+					client.WithBackoff(client.DefaultBackoff)); err != nil {
 					c.sendErrorResponse(fmt.Sprintf(
 						"could not process a callback request with status 2: %s", err.Error(),
 					), rw)
@@ -201,7 +198,7 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 		if _, err := rw.Write(response.CallbackResponse{
 			Error: 0,
 		}.ToJSON()); err != nil {
-			c.logger.Warnf("could not send a response: %w", err)
+			c.logger.Warnf("could not send a response: %v", err)
 		}
 	}
 }

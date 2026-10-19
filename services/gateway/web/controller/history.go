@@ -32,7 +32,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/golang-jwt/jwt/v5"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 	"golang.org/x/sync/errgroup"
 )
 

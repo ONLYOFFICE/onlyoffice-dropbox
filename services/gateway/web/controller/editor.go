@@ -39,7 +39,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/mileusna/useragent"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
 )
@@ -92,7 +92,7 @@ func (c *EditorController) errorResponse(
 		"errorSubtext": errorSubtext,
 		"reloadButton": reloadButton,
 	}); err != nil {
-		c.logger.Errorf("could not execute error template: %w", err)
+		c.logger.Errorf("could not execute error template: %v", err)
 	}
 }
 
@@ -269,7 +269,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			uid,
 		), &ures); err != nil {
-			c.logger.Debugf("could not get user %d access info: %s", uid, err.Error())
+			c.logger.Debugf("could not get user %s access info: %s", uid, err.Error())
 			c.errorResponse(rw, embeddable.ErrorPage,
 				"Sorry, the document cannot be opened",
 				"Please try again",
@@ -296,7 +296,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 					}),
 					"file": file.Name,
 				}); err != nil {
-					c.logger.Errorf("could not execute an email template: %w", err)
+					c.logger.Errorf("could not execute an email template: %v", err)
 				}
 				return
 			} else if ctx.Err() != nil {
@@ -349,7 +349,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 				MessageID: "cancelButton",
 			}),
 		}); err != nil {
-			c.logger.Errorf("could not execute an editor template: %w", err)
+			c.logger.Errorf("could not execute an editor template: %v", err)
 		}
 	}
 }
