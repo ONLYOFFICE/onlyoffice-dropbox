@@ -22,9 +22,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
@@ -107,11 +107,12 @@ func (c *EditorController) fetchDropboxData(
 	response.DropboxDownloadResponse,
 	error,
 ) {
-	g, ctx := errgroup.WithContext(ctx)
+	var g errgroup.Group
 
 	var user response.DropboxUserResponse
 	var file response.DropboxFileResponse
 	var download response.DropboxDownloadResponse
+	var downloadErr error
 
 	g.Go(func() error {
 		resp, err := c.api.GetUser(ctx, accessToken)
@@ -134,13 +135,17 @@ func (c *EditorController) fetchDropboxData(
 	g.Go(func() error {
 		resp, err := c.api.GetDownloadLink(ctx, fileID, accessToken)
 		if err != nil {
-			return fmt.Errorf("failed to get download link: %w", err)
+			downloadErr = fmt.Errorf("failed to get download link: %w", err)
+			return downloadErr
 		}
 		download = resp
 		return nil
 	})
 
 	if err := g.Wait(); err != nil {
+		if errors.Is(downloadErr, aclient.ErrEmailNotVerified) {
+			return user, file, download, downloadErr
+		}
 		return user, file, download, err
 	}
 
@@ -344,7 +349,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"file":    file.ID,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js?shardkey=%s", config.ServerURL, config.Document.Key),
-			"config":  string(config.ToJSON()),
+			"config":  config,
 			"docType": config.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "cancelButton",

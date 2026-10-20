@@ -505,8 +505,13 @@ func (c DropboxClient) executeOperation(
 	}
 
 	if c.isTeamAccount(userRes) {
-		if result, err := c.executeTeam(ctx, path, token, userRes, opType); err == nil {
+		result, err := c.executeTeam(ctx, path, token, userRes, opType)
+		if err == nil {
 			return result, nil
+		}
+
+		if errors.Is(err, ErrEmailNotVerified) {
+			return result, err
 		}
 	}
 
