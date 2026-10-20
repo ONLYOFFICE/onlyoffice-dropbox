@@ -53,7 +53,8 @@ var (
 	DesktopPage = template.Must(template.ParseFS(
 		templateFiles, "templates/desktop.html", "templates/spinner.html",
 	))
-	MCPKeyPage = htmltemplate.Must(htmltemplate.ParseFS(templateFiles, "templates/mcp.html"))
+	MCPKeyPage   = htmltemplate.Must(htmltemplate.ParseFS(templateFiles, "templates/mcp.html"))
+	NotFoundPage = template.Must(template.ParseFS(templateFiles, "templates/notfound.html"))
 )
 
 func init() {

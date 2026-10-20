@@ -19,7 +19,10 @@
 package web
 
 import (
+	"io/fs"
 	"net/http"
+	"path"
+	"strings"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
@@ -100,6 +103,23 @@ func (s *DropboxHTTPService) InitializeServer() *mux.Router {
 	return s.mux
 }
 
+// serves the embedded icons and answers every other unknown
+// path with the 404 page.
+func notFoundHandler() http.Handler {
+	static := http.FileServer(http.FS(embeddable.IconFiles))
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		if info, err := fs.Stat(embeddable.IconFiles, name); err == nil && !info.IsDir() {
+			static.ServeHTTP(rw, r)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
+		rw.WriteHeader(http.StatusNotFound)
+		_ = embeddable.NotFoundPage.Execute(rw, nil)
+	})
+}
+
 // InitializeRoutes builds all http routes.
 func (s *DropboxHTTPService) InitializeRoutes() {
 	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
@@ -129,6 +149,5 @@ func (s *DropboxHTTPService) InitializeRoutes() {
 	api.Handle("/history", s.historyController.BuildGetFileHistory()).Methods(http.MethodGet)
 	api.Handle("/history/links", s.historyController.BuildGetFileHistoryLinks()).Methods(http.MethodGet)
 
-	var staticFS = http.FS(embeddable.IconFiles)
-	s.mux.NotFoundHandler = http.FileServer(staticFS)
+	s.mux.NotFoundHandler = notFoundHandler()
 }
