@@ -116,6 +116,8 @@ func (c MCPController) BuildGetKey() http.HandlerFunc {
 
 		rw.Header().Set("Cache-Control", "no-store")
 		rw.Header().Set("Referrer-Policy", "same-origin")
+		rw.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+		rw.Header().Set("X-Frame-Options", "DENY")
 		rw.Header().Set("X-MCP-Key-Expires", expiresAt.UTC().Format(time.RFC3339))
 		if wantsJSON(r) {
 			rw.Header().Set("Content-Type", "application/json")
