@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -52,17 +52,22 @@ type keyClaims struct {
 //
 // Keys are deterministic: all claims derive from the user, the version and
 // the current window, and HS256 signatures are deterministic, so repeated
-// requests return the same key. They are signed with a secret derived from
-// the client secret, so session and editor tokens cannot be used as keys.
+// requests return the same key. They are signed with the dedicated
+// mcp.key_secret, not the Dropbox client secret, so session and editor tokens
+// cannot be used as keys and the Dropbox secret cannot mint them. Keys signed
+// with mcp.previous_key_secret are still accepted while a rotation is under
+// way.
 type KeyManager struct {
-	jwtManager crypto.JwtManager
-	secret     string
+	jwtManager     crypto.JwtManager
+	secret         string
+	previousSecret string
 }
 
-func NewKeyManager(jwtManager crypto.JwtManager, credentials *oauth2.Config) KeyManager {
+func NewKeyManager(jwtManager crypto.JwtManager, config *shared.MCPConfig) KeyManager {
 	return KeyManager{
-		jwtManager: jwtManager,
-		secret:     credentials.ClientSecret + ":" + KeyAudience,
+		jwtManager:     jwtManager,
+		secret:         config.MCP.KeySecret,
+		previousSecret: config.MCP.PreviousKeySecret,
 	}
 }
 
@@ -93,7 +98,10 @@ func (k KeyManager) Issue(uid string, version int, now time.Time) (string, time.
 func (k KeyManager) Verify(key string) (string, int, error) {
 	var claims jwt.MapClaims
 	if err := k.jwtManager.Verify(k.secret, key, &claims); err != nil {
-		return "", 0, ErrInvalidKey
+		claims = nil
+		if k.previousSecret == "" || k.jwtManager.Verify(k.previousSecret, key, &claims) != nil {
+			return "", 0, ErrInvalidKey
+		}
 	}
 
 	audience, err := claims.GetAudience()

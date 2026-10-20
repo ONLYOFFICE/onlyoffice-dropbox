@@ -51,3 +51,6 @@ onlyoffice:
     allowed_downloads: 10
   callback:
     upload_timeout: 120
+mcp:
+  key_secret: ""
+  previous_key_secret: ""

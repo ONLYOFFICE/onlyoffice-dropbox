@@ -57,6 +57,7 @@ func Server() *cli.Command {
 					crypto.NewStateGenerator,
 					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					shared.BuildNewOnlyofficeConfig(configPath),
+					shared.BuildNewMCPConfig(configPath),
 					controller.NewAuthController,
 					controller.NewEditorController,
 					convert.NewConvertController,
