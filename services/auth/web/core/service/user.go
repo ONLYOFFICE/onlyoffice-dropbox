@@ -150,6 +150,7 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 		TokenType:    user.TokenType,
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,
+		KeyVersion:   user.KeyVersion,
 	}, nil
 }
 
@@ -177,11 +178,8 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 		Expiry:       user.Expiry,
 	}
 
-	if err := s.cache.Put(ctx, euser.ID, euser, 2*time.Second); err != nil {
-		s.logger.Warnf("could not populate cache with a user %s instance: %s", euser.ID, err.Error())
-		if err := s.cache.Delete(ctx, euser.ID); err != nil {
-			s.logger.Warnf("could not remove user from the cache: %w", err)
-		}
+	if err := s.cache.Delete(ctx, euser.ID); err != nil {
+		s.logger.Debugf("could not remove user %s from the cache: %s", euser.ID, err.Error())
 	}
 
 	s.logger.Debugf("user %s is valid to perform an update action", user.ID)
@@ -190,6 +188,27 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 	}
 
 	return user, nil
+}
+
+func (s userService) RotateKey(ctx context.Context, uid string) (int, error) {
+	id := strings.TrimSpace(uid)
+	if id == "" {
+		return 0, &InvalidServiceParameterError{
+			Name:   "UID",
+			Reason: "Should not be blank",
+		}
+	}
+
+	version, err := s.adapter.IncrementKeyVersion(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("could not rotate user key: %w", err)
+	}
+
+	if err := s.cache.Delete(ctx, id); err != nil {
+		s.logger.Debugf("could not remove user %s from the cache: %s", id, err.Error())
+	}
+
+	return version, nil
 }
 
 func (s userService) RemoveUser(ctx context.Context, uid string) error {

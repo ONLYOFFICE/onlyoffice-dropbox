@@ -27,17 +27,20 @@ type AuthRPCServer struct {
 	insertHandler handler.UserInsertHandler
 	selectHandler handler.UserSelectHandler
 	deleteHandler handler.UserDeleteHandler
+	keyHandler    handler.UserKeyHandler
 }
 
 func NewAuthRPCServer(
 	insertHandler handler.UserInsertHandler,
 	selectHandler handler.UserSelectHandler,
 	deleteHandler handler.UserDeleteHandler,
+	keyHandler handler.UserKeyHandler,
 ) rpc.RPCEngine {
 	return &AuthRPCServer{
 		insertHandler: insertHandler,
 		selectHandler: selectHandler,
 		deleteHandler: deleteHandler,
+		keyHandler:    keyHandler,
 	}
 }
 
@@ -46,5 +49,5 @@ func (a AuthRPCServer) BuildMessageHandlers() []rpc.RPCMessageHandler {
 }
 
 func (a AuthRPCServer) BuildHandlers() []interface{} {
-	return []interface{}{a.selectHandler, a.deleteHandler, a.insertHandler}
+	return []interface{}{a.selectHandler, a.deleteHandler, a.insertHandler, a.keyHandler}
 }

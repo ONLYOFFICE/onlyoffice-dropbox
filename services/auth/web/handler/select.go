@@ -93,6 +93,7 @@ func (u UserSelectHandler) GetUser(ctx context.Context, uid *string, res *domain
 				TokenType:    "Bearer",
 				Scope:        user.Scope,
 				Expiry:       nToken.Expiry.UTC().Format(time.RFC3339),
+				KeyVersion:   user.KeyVersion,
 			})
 
 			if err != nil {

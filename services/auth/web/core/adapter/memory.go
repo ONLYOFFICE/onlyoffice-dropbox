@@ -39,6 +39,14 @@ func NewMemoryUserAdapter() port.UserAccessServiceAdapter {
 }
 
 func (m *memoryUserAdapter) save(user domain.UserAccess) error {
+	if existing, err := m.SelectUser(context.Background(), user.ID); err == nil {
+		user.KeyVersion = existing.KeyVersion
+	}
+
+	return m.write(user)
+}
+
+func (m *memoryUserAdapter) write(user domain.UserAccess) error {
 	buffer, err := json.Marshal(user)
 
 	if err != nil {
@@ -75,6 +83,20 @@ func (m *memoryUserAdapter) UpsertUser(ctx context.Context, user domain.UserAcce
 	}
 
 	return user, nil
+}
+
+func (m *memoryUserAdapter) IncrementKeyVersion(ctx context.Context, uid string) (int, error) {
+	user, err := m.SelectUser(ctx, uid)
+	if err != nil {
+		return 0, err
+	}
+
+	user.KeyVersion++
+	if err := m.write(user); err != nil {
+		return 0, err
+	}
+
+	return user.KeyVersion, nil
 }
 
 func (m *memoryUserAdapter) DeleteUser(ctx context.Context, uid string) error {

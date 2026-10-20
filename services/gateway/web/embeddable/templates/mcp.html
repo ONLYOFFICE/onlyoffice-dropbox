@@ -1,0 +1,847 @@
+<!--*
+ *
+ * (c) Copyright Ascensio System SIA 2026
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations
+*-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="same-origin" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>ONLYOFFICE for Dropbox: MCP connection</title>
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
+    <style>
+      :root {
+        color-scheme: light;
+        --color-background-page: #f7f7f8;
+        --color-background-card: #ffffff;
+        --color-background-subtle: #f1f2f4;
+        --color-border: #e3e5e8;
+        --color-text: #1f2328;
+        --color-text-secondary: #5f6670;
+        --color-accent: #ff6f3d;
+        --color-text-on-accent: #ffffff;
+        --color-accent-subtle: #fff0ea;
+        --color-link: #0b6bcb;
+        --color-code-background: #f6f8fa;
+        --color-code-text: #1f2328;
+        --color-success: #1f8a4c;
+        --color-danger: #c62828;
+        --color-danger-subtle: #fdecec;
+        --shadow-card:
+          0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.06);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --color-background-page: #111315;
+          --color-background-card: #191c1f;
+          --color-background-subtle: #20242a;
+          --color-border: #2c3138;
+          --color-text: #e8eaed;
+          --color-text-secondary: #a0a7b1;
+          --color-accent: #ff7a4d;
+          --color-text-on-accent: #1a0f0a;
+          --color-accent-subtle: #2a1c16;
+          --color-link: #6cb4ff;
+          --color-code-background: #0b0d10;
+          --color-code-text: #e6e9ee;
+          --color-success: #4cc07a;
+          --color-danger: #ff6b6b;
+          --color-danger-subtle: #2e1a1a;
+          --shadow-card:
+            0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+
+        font:
+          15px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          "Helvetica Neue",
+          Arial,
+          sans-serif;
+
+        color: var(--color-text);
+        background: var(--color-background-page);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .link {
+        color: var(--color-link);
+      }
+
+      .container {
+        max-width: 980px;
+
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .hero {
+        padding: 56px 0 28px;
+      }
+
+      .hero_eyebrow {
+        margin: 0 0 10px;
+
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+
+        text-transform: uppercase;
+
+        color: var(--color-accent);
+      }
+
+      .hero_title {
+        margin: 0 0 14px;
+
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        font-size: clamp(28px, 4.2vw, 42px);
+      }
+
+      .hero_lead {
+        max-width: 680px;
+
+        margin: 0;
+
+        font-size: 17px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .hero_note {
+        max-width: 680px;
+
+        margin: 14px 0 0;
+        padding-left: 12px;
+
+        border-left: 3px solid var(--color-accent);
+
+        font-size: 14px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .card {
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+
+        box-shadow: var(--shadow-card);
+        background: var(--color-background-card);
+      }
+
+      .config {
+        margin: 28px 0 48px;
+
+        overflow: hidden;
+      }
+
+      .config_head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+
+        gap: 12px;
+        padding: 18px 20px;
+
+        border-bottom: 1px solid var(--color-border);
+      }
+
+      .config_title {
+        margin: 0;
+
+        font-size: 16px;
+      }
+
+      .config_meta {
+        display: flex;
+        flex-wrap: wrap;
+
+        gap: 8px;
+        margin-top: 4px;
+
+        font-size: 13px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .config_status {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+
+        margin-right: 6px;
+
+        border-radius: 50%;
+        vertical-align: 1px;
+
+        background: var(--color-success);
+      }
+
+      .config_banner {
+        padding: 12px 20px;
+
+        font-size: 14px;
+
+        border-bottom: 1px solid var(--color-border);
+
+        color: var(--color-text);
+        background: var(--color-accent-subtle);
+      }
+
+      .config_actions {
+        display: flex;
+        flex-wrap: wrap;
+
+        gap: 8px;
+      }
+
+      .config_code {
+        margin: 0;
+        padding: 20px;
+
+        overflow-x: auto;
+        white-space: pre;
+        font:
+          13px/1.65 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          "Liberation Mono",
+          monospace;
+
+        color: var(--color-code-text);
+        background: var(--color-code-background);
+      }
+
+      .config_footnote {
+        padding: 12px 20px;
+
+        font-size: 13px;
+
+        border-top: 1px solid var(--color-border);
+
+        color: var(--color-text-secondary);
+        background: var(--color-background-subtle);
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        appearance: none;
+
+        gap: 8px;
+        padding: 9px 14px;
+
+        border: 1px solid var(--color-border);
+        border-radius: 9px;
+
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+
+        color: var(--color-text);
+        background: var(--color-background-card);
+
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          transform 0.05s;
+      }
+
+      .button:hover {
+        background: var(--color-background-subtle);
+      }
+
+      .button:active {
+        transform: translateY(1px);
+      }
+
+      .button:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      .button_primary {
+        border-color: var(--color-accent);
+
+        color: var(--color-text-on-accent);
+        background: var(--color-accent);
+      }
+
+      .button_primary:hover {
+        background: var(--color-accent);
+        filter: brightness(1.05);
+      }
+
+      .button_danger {
+        border-color: var(--color-danger);
+
+        color: var(--color-danger);
+      }
+
+      .button_danger:hover {
+        background: var(--color-danger-subtle);
+      }
+
+      .button_icon {
+        width: 16px;
+        height: 16px;
+      }
+
+      .code {
+        padding: 1px 6px;
+
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+
+        font:
+          13px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+
+        background: var(--color-background-subtle);
+      }
+
+      .section {
+        margin-bottom: 48px;
+      }
+
+      .section_title {
+        margin: 0 0 18px;
+
+        font-size: 22px;
+        letter-spacing: -0.01em;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        list-style: none;
+
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+      }
+
+      .steps_item {
+        padding: 20px;
+      }
+
+      .steps_number {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+
+        margin-bottom: 12px;
+
+        border-radius: 50%;
+
+        font-size: 14px;
+        font-weight: 700;
+
+        color: var(--color-accent);
+        background: var(--color-accent-subtle);
+      }
+
+      .steps_title,
+      .features_title {
+        margin: 0 0 6px;
+
+        font-size: 15px;
+      }
+
+      .steps_text,
+      .features_text {
+        margin: 0;
+
+        font-size: 14px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .steps_path {
+        font-weight: 600;
+
+        color: var(--color-text);
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+
+        gap: 16px;
+      }
+
+      .features_item {
+        padding: 20px;
+      }
+
+      .features_icon {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+
+        margin-bottom: 12px;
+
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+
+        color: var(--color-accent);
+        background: var(--color-background-subtle);
+      }
+
+      .features_icon_image {
+        width: 20px;
+        height: 20px;
+      }
+
+      .notice {
+        display: flex;
+
+        gap: 14px;
+        padding: 18px 20px;
+
+        border-left: 4px solid var(--color-accent);
+      }
+
+      .notice_icon {
+        flex: none;
+        width: 22px;
+        height: 22px;
+
+        margin-top: 2px;
+
+        color: var(--color-accent);
+      }
+
+      .notice_actions {
+        margin-top: 14px;
+      }
+
+      .notice_list {
+        margin: 6px 0 0;
+        padding-left: 18px;
+
+        font-size: 14px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .footer {
+        padding: 24px 0 40px;
+
+        border-top: 1px solid var(--color-border);
+
+        font-size: 13px;
+
+        color: var(--color-text-secondary);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+
+        padding: 10px 16px;
+
+        border-radius: 10px;
+
+        font-size: 14px;
+        font-weight: 600;
+
+        color: var(--color-background-page);
+        background: var(--color-text);
+        opacity: 0;
+
+        pointer-events: none;
+        transform: translate(-50%, 20px);
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+      }
+
+      .toast_visible {
+        opacity: 1;
+
+        transform: translate(-50%, 0);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 760px) {
+        .steps,
+        .features {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          padding-top: 36px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="container">
+      <div class="hero">
+        <p class="hero_eyebrow">AI agent connection</p>
+        <h1 class="hero_title">
+          Bring your Dropbox into the ONLYOFFICE AI agent
+        </h1>
+        <p class="hero_lead">
+          Let the AI agent in ONLYOFFICE Desktop search, read and organize your
+          Dropbox, and open documents in ONLYOFFICE so every edit is saved
+          straight back to Dropbox.
+        </p>
+        <p class="hero_note">
+          This server is a proxy for
+          <a
+            class="link"
+            href="https://help.dropbox.com/integrations/connect-dropbox-mcp-server"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Dropbox's official MCP server</a
+          >: every Dropbox tool is passed through as is, plus one extra tool,
+          <code class="code">open_in_onlyoffice</code>, that opens a Dropbox
+          file in ONLYOFFICE Desktop for editing.
+        </p>
+      </div>
+
+      <div class="card config" aria-labelledby="config-title">
+        <div class="config_head">
+          <div>
+            <h2 class="config_title" id="config-title">
+              Your MCP server configuration
+            </h2>
+            <div class="config_meta">
+              <span
+                ><span class="config_status"></span>Personal key generated,
+                valid until {{ .expiresAt }}</span
+              >
+            </div>
+          </div>
+          <div class="config_actions">
+            <button
+              class="button"
+              id="reveal"
+              type="button"
+              aria-pressed="false"
+            >
+              <svg
+                class="button_icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <span id="reveal-label">Show key</span>
+            </button>
+            <button class="button button_primary" id="copy" type="button">
+              <svg
+                class="button_icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <rect x="9" y="9" width="12" height="12" rx="2"></rect>
+                <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+              </svg>
+              <span>Copy configuration</span>
+            </button>
+          </div>
+        </div>
+        {{ if .wasRevoked }}
+        <div class="config_banner" role="status">
+          Your previous key was revoked and no longer works. Paste this new
+          configuration into ONLYOFFICE Desktop again.
+        </div>
+        {{ end }}
+        <pre class="config_code" id="config-view" aria-live="polite">
+{{ .maskedConfig }}</pre
+        >
+        <pre class="hidden" id="config-masked">{{ .maskedConfig }}</pre>
+        <pre class="hidden" id="config-full">{{ .config }}</pre>
+        <div class="config_footnote">
+          Server endpoint <code class="code">{{ .endpoint }}</code>, Streamable
+          HTTP transport, bearer key authentication
+        </div>
+      </div>
+
+      <section class="section" aria-labelledby="steps-title">
+        <h2 class="section_title" id="steps-title">Connect in three steps</h2>
+        <ol class="steps">
+          <li class="card steps_item">
+            <div class="steps_number">1</div>
+            <h3 class="steps_title">Sign in to Dropbox in Desktop</h3>
+            <p class="steps_text">
+              In ONLYOFFICE Desktop choose
+              <span class="steps_path">Connect to cloud &gt; Dropbox</span>, so
+              files the agent opens load in the editor.
+            </p>
+          </li>
+          <li class="card steps_item">
+            <div class="steps_number">2</div>
+            <h3 class="steps_title">Open the MCP settings</h3>
+            <p class="steps_text">
+              Go to
+              <span class="steps_path"
+                >AI agent &gt; MCP Servers &gt; Edit configuration</span
+              >.
+            </p>
+          </li>
+          <li class="card steps_item">
+            <div class="steps_number">3</div>
+            <h3 class="steps_title">Paste and save</h3>
+            <p class="steps_text">
+              Add the <code class="code">{{ .serverName }}</code> entry to
+              <code class="code">mcpServers</code>, save and restart Desktop.
+              The Dropbox tools appear in the list.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section" aria-labelledby="features-title">
+        <h2 class="section_title" id="features-title">What the agent can do</h2>
+        <div class="features">
+          <div class="card features_item">
+            <div class="features_icon">
+              <svg
+                class="features_icon_image"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+              </svg>
+            </div>
+            <h3 class="features_title">Every Dropbox tool</h3>
+            <p class="features_text">
+              Search, list, read, move, copy and share files with the full set
+              of Dropbox MCP tools.
+            </p>
+          </div>
+          <div class="card features_item">
+            <div class="features_icon">
+              <svg
+                class="features_icon_image"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path
+                  d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"
+                ></path>
+                <path d="M14 3v6h6"></path>
+                <path d="m9 15 2 2 4-4"></path>
+              </svg>
+            </div>
+            <h3 class="features_title">Edit in place</h3>
+            <p class="features_text">
+              Ask the agent to open a document: it opens in ONLYOFFICE and
+              changes are saved back to Dropbox automatically, with no local
+              copies.
+            </p>
+          </div>
+          <div class="card features_item">
+            <div class="features_icon">
+              <svg
+                class="features_icon_image"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6Z"
+                ></path>
+                <path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </div>
+            <h3 class="features_title">Your permissions only</h3>
+            <p class="features_text">
+              The agent acts with the access you granted ONLYOFFICE in Dropbox,
+              nothing more.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="security-title">
+        <h2 class="section_title" id="security-title">Keep your key safe</h2>
+        <div class="card notice">
+          <svg
+            class="notice_icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+          </svg>
+          <div>
+            <strong>Treat the key like a password.</strong>
+            <ul class="notice_list">
+              <li>
+                Anyone who has it can use your Dropbox through ONLYOFFICE until
+                {{ .expiresAt }}. A newer key appears on this page before then.
+              </li>
+              <li>
+                Reloading this page shows the same key. If it may have leaked,
+                revoke it: every earlier key stops working at once.
+              </li>
+              <li>
+                To revoke all access, disconnect ONLYOFFICE in
+                <a
+                  class="link"
+                  href="https://www.dropbox.com/account/connected_apps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Dropbox &gt; Settings &gt; Connected apps</a
+                >.
+              </li>
+            </ul>
+            <form
+              class="notice_actions"
+              method="post"
+              action="/mcp/key/revoke"
+            >
+              {{ .csrfField }}
+              <button class="button button_danger" type="submit">
+                Revoke key
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">ONLYOFFICE for Dropbox by Ascensio System SIA</div>
+    </footer>
+
+    <div class="toast" id="toast" role="status">Configuration copied</div>
+
+    <script>
+      (function () {
+        var view = document.getElementById("config-view");
+        var full = document.getElementById("config-full").textContent;
+        var masked = document.getElementById("config-masked").textContent;
+
+        var reveal = document.getElementById("reveal");
+        var revealLabel = document.getElementById("reveal-label");
+
+        var toast = document.getElementById("toast");
+
+        var timer;
+
+        function notify(text) {
+          toast.textContent = text;
+          toast.classList.add("toast_visible");
+
+          clearTimeout(timer);
+
+          timer = setTimeout(function () {
+            toast.classList.remove("toast_visible");
+          }, 1800);
+        }
+
+        function fallbackCopy(text) {
+          var area = document.createElement("textarea");
+          area.value = text;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+
+          document.body.appendChild(area);
+
+          area.select();
+          var ok = false;
+          try {
+            ok = document.execCommand("copy");
+          } catch (e) {}
+
+          document.body.removeChild(area);
+
+          return ok;
+        }
+
+        document.getElementById("copy").addEventListener("click", function () {
+          var done = function () {
+            notify("Configuration copied");
+          };
+
+          var failed = function () {
+            if (fallbackCopy(full)) done();
+            else notify("Copy failed: select the text and copy it manually");
+          };
+
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(full).then(done, failed);
+          } else {
+            failed();
+          }
+        });
+
+        reveal.addEventListener("click", function () {
+          var shown = reveal.getAttribute("aria-pressed") === "true";
+          view.textContent = shown ? masked : full;
+
+          reveal.setAttribute("aria-pressed", String(!shown));
+          revealLabel.textContent = shown ? "Show key" : "Hide key";
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -29,4 +29,5 @@ type UserAccessService interface {
 	GetUser(ctx context.Context, uid string) (domain.UserAccess, error)
 	UpdateUser(ctx context.Context, user domain.UserAccess) (domain.UserAccess, error)
 	RemoveUser(ctx context.Context, uid string) error
+	RotateKey(ctx context.Context, uid string) (int, error)
 }

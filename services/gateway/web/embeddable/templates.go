@@ -21,6 +21,7 @@ package embeddable
 import (
 	"embed"
 	"encoding/json"
+	htmltemplate "html/template"
 	"text/template"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -52,6 +53,7 @@ var (
 	DesktopPage = template.Must(template.ParseFS(
 		templateFiles, "templates/desktop.html", "templates/spinner.html",
 	))
+	MCPKeyPage = htmltemplate.Must(htmltemplate.ParseFS(templateFiles, "templates/mcp.html"))
 )
 
 func init() {
