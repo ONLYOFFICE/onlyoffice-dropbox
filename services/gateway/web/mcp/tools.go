@@ -32,7 +32,9 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
+	"github.com/afex/hystrix-go/hystrix"
 	"github.com/sethvargo/go-limiter"
 	"github.com/sethvargo/go-limiter/memorystore"
 )
@@ -44,6 +46,8 @@ const (
 	upstreamTimeout = proxyTimeout - 5*time.Second
 
 	OpenToolName = "open_in_onlyoffice"
+
+	APICircuitName = "dropbox-api"
 
 	toolCallBurst    = 20
 	toolCallInterval = 2 * time.Second
@@ -109,6 +113,26 @@ func fileRef(value, name string) (string, error) {
 	}
 }
 
+func waitHint(d time.Duration) string {
+	if d <= 0 {
+		return "Wait a little"
+	}
+
+	return fmt.Sprintf("Wait %d seconds", int((d+time.Second-1)/time.Second))
+}
+
+func isAPIOutage(err error) bool {
+	var apiErr *aclient.DropboxAPIError
+	switch {
+	case err == nil, errors.Is(err, context.Canceled):
+		return false
+	case errors.As(err, &apiErr):
+		return apiErr.Status >= http.StatusInternalServerError
+	default:
+		return true
+	}
+}
+
 func dropboxError(err error, ref string) error {
 	var apiErr *aclient.DropboxAPIError
 	if !errors.As(err, &apiErr) {
@@ -123,7 +147,8 @@ func dropboxError(err error, ref string) error {
 	case apiErr.Status == http.StatusUnauthorized:
 		return newToolError("Dropbox rejected ONLYOFFICE's access. The user may have disconnected the app in Dropbox; ask them to sign in again.")
 	case apiErr.Status == http.StatusTooManyRequests:
-		return newToolError("Dropbox is rate limiting requests. Wait a little and try again.")
+		return newToolError("Dropbox is rate limiting requests for this account. " + waitHint(apiErr.RetryAfter) +
+			" before trying again; do not retry immediately.")
 	default:
 		return err
 	}
@@ -175,7 +200,7 @@ func (h Handler) listTools(ctx context.Context, uid string) []any {
 		upstreamTools = h.upstream.CachedTools()
 	} else {
 		var err error
-		upstreamTools, err = h.upstream.ListTools(ctx, token)
+		upstreamTools, err = h.upstream.ListTools(ctx, uid, token)
 		if err != nil {
 			h.logger.Warnf("could not refresh dropbox mcp tools for user %s, serving %d cached: %s",
 				uid, len(upstreamTools), err.Error())
@@ -201,14 +226,6 @@ func (h Handler) listTools(ctx context.Context, uid string) []any {
 	return tools
 }
 
-func waitHint(d time.Duration) string {
-	if d <= 0 {
-		return "Wait a little"
-	}
-
-	return fmt.Sprintf("Wait %d seconds", int((d+time.Second-1)/time.Second))
-}
-
 func (h Handler) allowToolCall(ctx context.Context, uid string) (bool, time.Duration) {
 	_, _, reset, ok, err := h.limiter.Take(ctx, uid)
 	if err != nil {
@@ -229,7 +246,7 @@ func (h Handler) proxyCall(ctx context.Context, uid, name string, args json.RawM
 		return nil, err
 	}
 
-	result, err := h.upstream.CallTool(ctx, token, name, args)
+	result, err := h.upstream.CallTool(ctx, uid, token, name, args)
 
 	var limited *UpstreamRateLimitedError
 	switch {
@@ -265,8 +282,17 @@ func (h Handler) openDesktop(ctx context.Context, uid string, args json.RawMessa
 		return nil, err
 	}
 
-	meta, err := h.api.GetMetadata(ctx, ref, token)
-	if err != nil {
+	var meta response.DropboxMetadata
+	if err := guarded(ctx, APICircuitName, isAPIOutage, func(ctx context.Context) error {
+		var err error
+		meta, err = h.api.GetMetadata(ctx, ref, token)
+		return err
+	}); err != nil {
+		if errors.Is(err, ErrUpstreamUnavailable) {
+			h.logger.Warnf("dropbox api unavailable for %s: %s", OpenToolName, err.Error())
+			return nil, newToolError("Dropbox is unavailable right now. Try again later.")
+		}
+
 		return nil, dropboxError(err, ref)
 	}
 
@@ -349,6 +375,14 @@ func NewHandler(
 	if err != nil {
 		return Handler{}, fmt.Errorf("could not create the mcp tool call limiter: %w", err)
 	}
+
+	hystrix.ConfigureCommand(APICircuitName, hystrix.CommandConfig{
+		Timeout:                int(toolTimeout / time.Millisecond),
+		MaxConcurrentRequests:  circuitMaxConcurrent,
+		RequestVolumeThreshold: circuitVolume,
+		ErrorPercentThreshold:  circuitErrorPercent,
+		SleepWindow:            int(circuitSleepWindow / time.Millisecond),
+	})
 
 	h := Handler{
 		users:         users,

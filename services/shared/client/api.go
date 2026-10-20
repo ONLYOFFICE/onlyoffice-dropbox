@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
@@ -66,8 +67,9 @@ func newOtelClient(timeout time.Duration) *http.Client {
 var otelHttpClient = newOtelClient(10 * time.Second)
 
 type DropboxAPIError struct {
-	Status  int
-	Summary string
+	Status     int
+	Summary    string
+	RetryAfter time.Duration
 }
 
 func (e *DropboxAPIError) Error() string {
@@ -80,6 +82,7 @@ func (e *DropboxAPIError) Error() string {
 
 type DropboxClient struct {
 	client      *resty.Client
+	direct      *resty.Client
 	cache       cache.Cache
 	credentials *oauth2.Config
 }
@@ -101,6 +104,12 @@ func NewDropboxAuthClient(
 			AddRetryCondition(func(r *resty.Response, err error) bool {
 				return r.StatusCode() == http.StatusTooManyRequests
 			}),
+		direct: resty.NewWithClient(otelHttpClient).
+			SetRedirectPolicy(resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			})).
+			SetTimeout(10 * time.Second).
+			SetLogger(log.NewEmptyLogger()),
 		cache:       cache,
 		credentials: credentials,
 	}
@@ -596,7 +605,7 @@ func (c DropboxClient) post(
 	url, token, pathRoot string,
 	body, result any,
 ) error {
-	req := c.client.R().
+	req := c.direct.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).
@@ -616,6 +625,10 @@ func (c DropboxClient) post(
 		apiErr := &DropboxAPIError{Status: resp.StatusCode()}
 		if res, ok := resp.Error().(*response.DropboxErrorResponse); ok {
 			apiErr.Summary = res.ErrorSummary
+		}
+
+		if seconds, err := strconv.Atoi(resp.Header().Get("Retry-After")); err == nil && seconds > 0 {
+			apiErr.RetryAfter = time.Duration(seconds) * time.Second
 		}
 
 		return apiErr

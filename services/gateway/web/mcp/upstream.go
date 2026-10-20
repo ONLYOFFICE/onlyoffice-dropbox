@@ -22,12 +22,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"mime"
 	"net"
 	"net/http"
@@ -37,19 +36,23 @@ import (
 	"time"
 
 	"github.com/afex/hystrix-go/hystrix"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
 	DropboxMCPURL = "https://mcp.dropbox.com/mcp"
 
 	upstreamProtocolVersion = "2025-06-18"
-	upstreamMaxResponse     = 16 * 1024 * 1024
+	upstreamMaxResponse     = 8 * 1024 * 1024
 	upstreamToolsTTL        = 5 * time.Minute
-	upstreamSessionIdle     = 30 * time.Minute
+	upstreamSessionIdle     = 10 * time.Minute
+	upstreamSweepInterval   = time.Minute
+	upstreamCloseTimeout    = 5 * time.Second
+	upstreamRetryJitter     = 200 * time.Millisecond
 	upstreamMaxToolPages    = 10
 
 	CircuitName          = "dropbox-mcp"
-	circuitMaxConcurrent = 200
+	circuitMaxConcurrent = 64
 	circuitVolume        = 20
 	circuitErrorPercent  = 50
 	circuitSleepWindow   = 15 * time.Second
@@ -57,7 +60,7 @@ const (
 
 var (
 	ErrUpstreamUnauthorized = errors.New("dropbox mcp rejected the access token")
-	ErrUpstreamUnavailable  = errors.New("dropbox mcp is unavailable")
+	ErrUpstreamUnavailable  = errors.New("dropbox is unavailable")
 	errUpstreamSessionGone  = errors.New("dropbox mcp session expired")
 )
 
@@ -113,6 +116,7 @@ func (e *UpstreamRPCError) Error() string {
 
 type upstreamSession struct {
 	id       string
+	token    string
 	lastUsed time.Time
 }
 
@@ -121,6 +125,7 @@ type upstream struct {
 	client    *http.Client
 	lock      sync.Mutex
 	sessions  map[string]*upstreamSession
+	starting  singleflight.Group
 	now       func() time.Time
 	catalog   []json.RawMessage
 	catalogAt time.Time
@@ -151,23 +156,71 @@ func newUpstream(url string, client *http.Client) *upstream {
 		SleepWindow:            int(circuitSleepWindow / time.Millisecond),
 	})
 
-	return &upstream{
+	u := &upstream{
 		url:      url,
 		client:   client,
 		sessions: make(map[string]*upstreamSession),
 		now:      time.Now,
 	}
+
+	go u.sweep(upstreamSweepInterval)
+
+	return u
 }
 
-func tokenKey(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(h[:])
+func (u *upstream) closeSession(s *upstreamSession) {
+	ctx, cancel := context.WithTimeout(context.Background(), upstreamCloseTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u.url, nil)
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+s.token)
+	req.Header.Set("Mcp-Session-Id", s.id)
+	req.Header.Set("MCP-Protocol-Version", upstreamProtocolVersion)
+
+	if resp, err := u.client.Do(req); err == nil {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64*1024))
+		resp.Body.Close()
+	}
 }
 
-func (u *upstream) forget(token string) {
+func (u *upstream) forget(uid string, closeUpstream bool) {
 	u.lock.Lock()
-	delete(u.sessions, tokenKey(token))
+	s, ok := u.sessions[uid]
+
+	delete(u.sessions, uid)
+
 	u.lock.Unlock()
+
+	if ok && closeUpstream {
+		go u.closeSession(s)
+	}
+}
+
+func (u *upstream) sweep(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		u.lock.Lock()
+		now := u.now()
+		var idle []*upstreamSession
+		for k, s := range u.sessions {
+			if now.Sub(s.lastUsed) > upstreamSessionIdle {
+				idle = append(idle, s)
+				delete(u.sessions, k)
+			}
+		}
+
+		u.lock.Unlock()
+
+		for _, s := range idle {
+			u.closeSession(s)
+		}
+	}
 }
 
 func readUpstreamResponse(resp *http.Response) ([]byte, error) {
@@ -305,8 +358,35 @@ func (u *upstream) send(
 	return res.Result, newSessionID, nil
 }
 
+func isRetryable(method string) bool {
+	return method == "initialize" || method == "tools/list" || strings.HasPrefix(method, "notifications/")
+}
+
+func (u *upstream) sendWithRetry(
+	ctx context.Context,
+	token, sessionID, method string,
+	params any,
+) (json.RawMessage, string, error) {
+	result, newSessionID, err := u.send(ctx, token, sessionID, method, params)
+	if !isRetryable(method) || !isUpstreamOutage(err) || ctx.Err() != nil {
+		return result, newSessionID, err
+	}
+
+	wait := upstreamRetryJitter/2 + rand.N(upstreamRetryJitter)
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return nil, "", err
+	case <-timer.C:
+	}
+
+	return u.send(ctx, token, sessionID, method, params)
+}
+
 func (u *upstream) initialize(ctx context.Context, token string) (string, error) {
-	_, sessionID, err := u.send(ctx, token, "", "initialize", map[string]any{
+	_, sessionID, err := u.sendWithRetry(ctx, token, "", "initialize", map[string]any{
 		"protocolVersion": upstreamProtocolVersion,
 		"capabilities":    map[string]any{},
 		"clientInfo": map[string]any{
@@ -319,73 +399,109 @@ func (u *upstream) initialize(ctx context.Context, token string) (string, error)
 		return "", err
 	}
 
-	if _, _, err := u.send(ctx, token, sessionID, "notifications/initialized", nil); err != nil {
+	if _, _, err := u.sendWithRetry(ctx, token, sessionID, "notifications/initialized", nil); err != nil {
 		return "", err
 	}
 
 	return sessionID, nil
 }
 
-func (u *upstream) session(ctx context.Context, token string) (*upstreamSession, error) {
-	u.lock.Lock()
-	now := u.now()
-
-	for k, s := range u.sessions {
-		if now.Sub(s.lastUsed) > upstreamSessionIdle {
-			delete(u.sessions, k)
+func (u *upstream) session(ctx context.Context, uid, token string) (*upstreamSession, error) {
+	current := func() *upstreamSession {
+		u.lock.Lock()
+		s, ok := u.sessions[uid]
+		switch {
+		case !ok:
+			u.lock.Unlock()
+			return nil
+		case s.token != token:
+			delete(u.sessions, uid)
+			u.lock.Unlock()
+			go u.closeSession(s)
+			return nil
 		}
+
+		s.lastUsed = u.now()
+		u.lock.Unlock()
+		return s
 	}
 
-	key := tokenKey(token)
-
-	if s, ok := u.sessions[key]; ok {
-		s.lastUsed = now
-		u.lock.Unlock()
+	if s := current(); s != nil {
 		return s, nil
 	}
 
-	u.lock.Unlock()
+	started, err, _ := u.starting.Do(uid+"\x00"+token, func() (any, error) {
+		if s := current(); s != nil {
+			return s, nil
+		}
 
-	id, err := u.initialize(ctx, token)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &upstreamSession{id: id, lastUsed: now}
-
-	u.lock.Lock()
-	u.sessions[key] = s
-	u.lock.Unlock()
-
-	return s, nil
-}
-
-func (u *upstream) callInSession(ctx context.Context, token, method string, params any) (json.RawMessage, error) {
-	for attempt := 0; ; attempt++ {
-		s, err := u.session(ctx, token)
+		id, err := u.initialize(context.WithoutCancel(ctx), token)
 		if err != nil {
 			return nil, err
 		}
 
-		result, _, err := u.send(ctx, token, s.id, method, params)
+		s := &upstreamSession{id: id, token: token, lastUsed: u.now()}
+
+		u.lock.Lock()
+		previous, replaced := u.sessions[uid]
+		u.sessions[uid] = s
+		u.lock.Unlock()
+
+		if replaced && previous.id != s.id {
+			go u.closeSession(previous)
+		}
+
+		return s, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return started.(*upstreamSession), nil
+}
+
+func (u *upstream) callInSession(ctx context.Context, uid, token, method string, params any) (json.RawMessage, error) {
+	for attempt := 0; ; attempt++ {
+		s, err := u.session(ctx, uid, token)
+		if err != nil {
+			return nil, err
+		}
+
+		result, _, err := u.sendWithRetry(ctx, token, s.id, method, params)
 		if errors.Is(err, errUpstreamSessionGone) && attempt == 0 {
-			u.forget(token)
+			u.forget(uid, false)
 			continue
 		}
 
 		if errors.Is(err, ErrUpstreamUnauthorized) {
-			u.forget(token)
+			u.forget(uid, false)
 		}
 
 		return result, err
 	}
 }
 
-func (u *upstream) guard(ctx context.Context, fn func(ctx context.Context) error) error {
+func recovering(ctx context.Context, fn func(ctx context.Context) error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("dropbox mcp call panicked: %v", r)
+		}
+	}()
+
+	return fn(ctx)
+}
+
+func guarded(
+	ctx context.Context,
+	command string,
+	isOutage func(error) bool,
+	fn func(ctx context.Context) error,
+) error {
 	var outcome error
-	err := hystrix.DoC(ctx, CircuitName, func(ctx context.Context) error {
-		outcome = fn(ctx)
-		if isUpstreamOutage(outcome) {
+	err := hystrix.DoC(ctx, command, func(ctx context.Context) error {
+		outcome = recovering(ctx, fn)
+		if isOutage(outcome) {
 			return outcome
 		}
 
@@ -405,11 +521,15 @@ func (u *upstream) guard(ctx context.Context, fn func(ctx context.Context) error
 	return outcome
 }
 
-func (u *upstream) call(ctx context.Context, token, method string, params any) (json.RawMessage, error) {
+func (u *upstream) guard(ctx context.Context, fn func(ctx context.Context) error) error {
+	return guarded(ctx, CircuitName, isUpstreamOutage, fn)
+}
+
+func (u *upstream) call(ctx context.Context, uid, token, method string, params any) (json.RawMessage, error) {
 	var result json.RawMessage
 	if err := u.guard(ctx, func(ctx context.Context) error {
 		var err error
-		result, err = u.callInSession(ctx, token, method, params)
+		result, err = u.callInSession(ctx, uid, token, method, params)
 		return err
 	}); err != nil {
 		return nil, err
@@ -424,9 +544,9 @@ func (u *upstream) CachedTools() []json.RawMessage {
 	return u.catalog
 }
 
-func (u *upstream) fetchTools(ctx context.Context, token string) ([]json.RawMessage, error) {
+func (u *upstream) fetchTools(ctx context.Context, uid, token string) ([]json.RawMessage, error) {
 	if err := u.guard(ctx, func(ctx context.Context) error {
-		_, err := u.session(ctx, token)
+		_, err := u.session(ctx, uid, token)
 		return err
 	}); err != nil {
 		return nil, err
@@ -441,7 +561,7 @@ func (u *upstream) fetchTools(ctx context.Context, token string) ([]json.RawMess
 			params["cursor"] = cursor
 		}
 
-		raw, err := u.call(ctx, token, "tools/list", params)
+		raw, err := u.call(ctx, uid, token, "tools/list", params)
 		if err != nil {
 			return nil, err
 		}
@@ -464,7 +584,7 @@ func (u *upstream) fetchTools(ctx context.Context, token string) ([]json.RawMess
 	return tools, nil
 }
 
-func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessage, error) {
+func (u *upstream) ListTools(ctx context.Context, uid, token string) ([]json.RawMessage, error) {
 	u.lock.Lock()
 	if u.catalog != nil && u.now().Sub(u.catalogAt) < upstreamToolsTTL {
 		tools := u.catalog
@@ -474,7 +594,7 @@ func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessa
 
 	u.lock.Unlock()
 
-	tools, err := u.fetchTools(ctx, token)
+	tools, err := u.fetchTools(ctx, uid, token)
 	if err != nil {
 		return u.CachedTools(), err
 	}
@@ -486,8 +606,8 @@ func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessa
 	return tools, nil
 }
 
-func (u *upstream) CallTool(ctx context.Context, token, name string, arguments json.RawMessage) (json.RawMessage, error) {
-	return u.call(ctx, token, "tools/call", map[string]any{
+func (u *upstream) CallTool(ctx context.Context, uid, token, name string, arguments json.RawMessage) (json.RawMessage, error) {
+	return u.call(ctx, uid, token, "tools/call", map[string]any{
 		"name":      name,
 		"arguments": arguments,
 	})
