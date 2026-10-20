@@ -29,10 +29,14 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/afex/hystrix-go/hystrix"
 )
 
 const (
@@ -43,12 +47,60 @@ const (
 	upstreamToolsTTL        = 5 * time.Minute
 	upstreamSessionIdle     = 30 * time.Minute
 	upstreamMaxToolPages    = 10
+
+	CircuitName          = "dropbox-mcp"
+	circuitMaxConcurrent = 200
+	circuitVolume        = 20
+	circuitErrorPercent  = 50
+	circuitSleepWindow   = 15 * time.Second
 )
 
 var (
 	ErrUpstreamUnauthorized = errors.New("dropbox mcp rejected the access token")
+	ErrUpstreamUnavailable  = errors.New("dropbox mcp is unavailable")
 	errUpstreamSessionGone  = errors.New("dropbox mcp session expired")
 )
+
+type UpstreamRateLimitedError struct {
+	RetryAfter time.Duration
+}
+
+func (e *UpstreamRateLimitedError) Error() string {
+	return fmt.Sprintf("dropbox mcp rate limited the request, retry after %s", e.RetryAfter)
+}
+
+func parseRetryAfter(value string, now time.Time) time.Duration {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+
+	if seconds, err := strconv.Atoi(value); err == nil {
+		return max(time.Duration(seconds)*time.Second, 0)
+	}
+
+	if at, err := http.ParseTime(value); err == nil {
+		return max(at.Sub(now), 0)
+	}
+
+	return 0
+}
+
+func isUpstreamOutage(err error) bool {
+	var rpcErr *UpstreamRPCError
+	var limited *UpstreamRateLimitedError
+	switch {
+	case err == nil,
+		errors.As(err, &rpcErr),
+		errors.As(err, &limited),
+		errors.Is(err, ErrUpstreamUnauthorized),
+		errors.Is(err, errUpstreamSessionGone),
+		errors.Is(err, context.Canceled):
+		return false
+	default:
+		return true
+	}
+}
 
 type UpstreamRPCError struct {
 	Code    int
@@ -61,20 +113,44 @@ func (e *UpstreamRPCError) Error() string {
 
 type upstreamSession struct {
 	id       string
-	tools    []json.RawMessage
-	toolsAt  time.Time
 	lastUsed time.Time
 }
 
 type upstream struct {
-	url      string
-	client   *http.Client
-	lock     sync.Mutex
-	sessions map[string]*upstreamSession
-	now      func() time.Time
+	url       string
+	client    *http.Client
+	lock      sync.Mutex
+	sessions  map[string]*upstreamSession
+	now       func() time.Time
+	catalog   []json.RawMessage
+	catalogAt time.Time
+}
+
+func newUpstreamTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          200,
+		MaxIdleConnsPerHost:   100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+	}
 }
 
 func newUpstream(url string, client *http.Client) *upstream {
+	hystrix.ConfigureCommand(CircuitName, hystrix.CommandConfig{
+		Timeout:                int(client.Timeout / time.Millisecond),
+		MaxConcurrentRequests:  circuitMaxConcurrent,
+		RequestVolumeThreshold: circuitVolume,
+		ErrorPercentThreshold:  circuitErrorPercent,
+		SleepWindow:            int(circuitSleepWindow / time.Millisecond),
+	})
+
 	return &upstream{
 		url:      url,
 		client:   client,
@@ -190,6 +266,8 @@ func (u *upstream) send(
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return nil, "", ErrUpstreamUnauthorized
+	case resp.StatusCode == http.StatusTooManyRequests:
+		return nil, "", &UpstreamRateLimitedError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())}
 	case resp.StatusCode == http.StatusNotFound && sessionID != "":
 		return nil, "", errUpstreamSessionGone
 	case resp.StatusCode >= 300:
@@ -282,7 +360,7 @@ func (u *upstream) session(ctx context.Context, token string) (*upstreamSession,
 	return s, nil
 }
 
-func (u *upstream) call(ctx context.Context, token, method string, params any) (json.RawMessage, error) {
+func (u *upstream) callInSession(ctx context.Context, token, method string, params any) (json.RawMessage, error) {
 	for attempt := 0; ; attempt++ {
 		s, err := u.session(ctx, token)
 		if err != nil {
@@ -303,20 +381,56 @@ func (u *upstream) call(ctx context.Context, token, method string, params any) (
 	}
 }
 
-func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessage, error) {
-	s, err := u.session(ctx, token)
-	if err != nil {
+func (u *upstream) guard(ctx context.Context, fn func(ctx context.Context) error) error {
+	var outcome error
+	err := hystrix.DoC(ctx, CircuitName, func(ctx context.Context) error {
+		outcome = fn(ctx)
+		if isUpstreamOutage(outcome) {
+			return outcome
+		}
+
+		return nil
+	}, nil)
+
+	switch {
+	case errors.Is(err, hystrix.ErrCircuitOpen),
+		errors.Is(err, hystrix.ErrMaxConcurrency),
+		errors.Is(err, hystrix.ErrTimeout),
+		errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf("%w: %s", ErrUpstreamUnavailable, err.Error())
+	case err != nil:
+		return err
+	}
+
+	return outcome
+}
+
+func (u *upstream) call(ctx context.Context, token, method string, params any) (json.RawMessage, error) {
+	var result json.RawMessage
+	if err := u.guard(ctx, func(ctx context.Context) error {
+		var err error
+		result, err = u.callInSession(ctx, token, method, params)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 
-	u.lock.Lock()
-	if s.tools != nil && u.now().Sub(s.toolsAt) < upstreamToolsTTL {
-		tools := s.tools
-		u.lock.Unlock()
-		return tools, nil
-	}
+	return result, nil
+}
 
-	u.lock.Unlock()
+func (u *upstream) CachedTools() []json.RawMessage {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	return u.catalog
+}
+
+func (u *upstream) fetchTools(ctx context.Context, token string) ([]json.RawMessage, error) {
+	if err := u.guard(ctx, func(ctx context.Context) error {
+		_, err := u.session(ctx, token)
+		return err
+	}); err != nil {
+		return nil, err
+	}
 
 	var tools []json.RawMessage
 	cursor := ""
@@ -347,8 +461,26 @@ func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessa
 		}
 	}
 
+	return tools, nil
+}
+
+func (u *upstream) ListTools(ctx context.Context, token string) ([]json.RawMessage, error) {
 	u.lock.Lock()
-	s.tools, s.toolsAt = tools, u.now()
+	if u.catalog != nil && u.now().Sub(u.catalogAt) < upstreamToolsTTL {
+		tools := u.catalog
+		u.lock.Unlock()
+		return tools, nil
+	}
+
+	u.lock.Unlock()
+
+	tools, err := u.fetchTools(ctx, token)
+	if err != nil {
+		return u.CachedTools(), err
+	}
+
+	u.lock.Lock()
+	u.catalog, u.catalogAt = tools, u.now()
 	u.lock.Unlock()
 
 	return tools, nil

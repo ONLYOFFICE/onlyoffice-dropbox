@@ -18,7 +18,12 @@
 
 package domain
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrUserNotFound = errors.New("user not found")
 
 type InvalidModelFieldError struct {
 	Model  string

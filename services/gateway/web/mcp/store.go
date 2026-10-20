@@ -20,12 +20,25 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"go-micro.dev/v4/client"
+	merrors "go-micro.dev/v4/errors"
 )
+
+var ErrUserNotFound = errors.New("user not found")
+
+func authError(err error, action, uid string) error {
+	if merr := merrors.FromError(err); merr != nil && merr.Code == http.StatusNotFound {
+		return fmt.Errorf("could not %s user %s: %w", action, uid, ErrUserNotFound)
+	}
+
+	return fmt.Errorf("could not %s user %s: %w", action, uid, err)
+}
 
 // UserStore reads and rotates the stored state of a Dropbox account: its
 // access token and the version its MCP keys must carry.
@@ -53,7 +66,7 @@ func (s authUserStore) GetUser(ctx context.Context, uid string) (response.UserRe
 		fmt.Sprintf("%s:auth", s.server.Namespace), "UserSelectHandler.GetUser",
 		uid,
 	), &ures); err != nil {
-		return ures, fmt.Errorf("could not get user %s: %w", uid, err)
+		return ures, authError(err, "get", uid)
 	}
 
 	return ures, nil
@@ -65,7 +78,7 @@ func (s authUserStore) RotateKey(ctx context.Context, uid string) (int, error) {
 		fmt.Sprintf("%s:auth", s.server.Namespace), "UserKeyHandler.RotateKey",
 		uid,
 	), &version); err != nil {
-		return 0, fmt.Errorf("could not rotate key of user %s: %w", uid, err)
+		return 0, authError(err, "rotate key of", uid)
 	}
 
 	return version, nil
@@ -80,4 +93,15 @@ func WithAccessToken(ctx context.Context, token string) context.Context {
 func accessTokenFrom(ctx context.Context) string {
 	token, _ := ctx.Value(accessTokenKey{}).(string)
 	return token
+}
+
+type authUnavailableKey struct{}
+
+func authUnavailable(ctx context.Context) bool {
+	unavailable, _ := ctx.Value(authUnavailableKey{}).(bool)
+	return unavailable
+}
+
+func WithAuthUnavailable(ctx context.Context) context.Context {
+	return context.WithValue(ctx, authUnavailableKey{}, true)
 }

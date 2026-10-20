@@ -20,6 +20,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -117,9 +118,16 @@ func (m MCPMiddleware) Authenticate(next http.Handler) http.Handler {
 
 		cancel()
 
-		if err != nil {
+		if errors.Is(err, mcp.ErrUserNotFound) {
 			m.reject(rw, r, fmt.Sprintf("user %s is not authorized in the integration: %s", uid, err.Error()),
 				"invalid_token", m.invalidKeyMessage())
+			return
+		}
+
+		if err != nil {
+			m.logger.Warnf("mcp auth check unavailable for user %s, serving without dropbox access: %s", uid, err.Error())
+			ctx := context.WithValue(r.Context(), mcp.UserIDKey, uid)
+			next.ServeHTTP(rw, r.WithContext(mcp.WithAuthUnavailable(ctx)))
 			return
 		}
 

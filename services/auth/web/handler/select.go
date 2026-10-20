@@ -20,6 +20,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/port"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"go-micro.dev/v4/client"
+	merrors "go-micro.dev/v4/errors"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/singleflight"
 )
@@ -108,6 +110,10 @@ func (u UserSelectHandler) GetUser(ctx context.Context, uid *string, res *domain
 	if usr, ok := user.(domain.UserAccess); ok {
 		*res = usr
 		return nil
+	}
+
+	if errors.Is(err, domain.ErrUserNotFound) {
+		return merrors.NotFound("auth", "user %s not found", *uid)
 	}
 
 	if err != nil {

@@ -166,6 +166,19 @@ func (h Handler) callTool(ctx context.Context, uid string, msg rpcMessage) rpcRe
 		params.Arguments = json.RawMessage("{}")
 	}
 
+	if authUnavailable(ctx) {
+		return h.toolFailure(msg.ID, uid, params.Name, newToolError(
+			"ONLYOFFICE could not verify the Dropbox connection right now. Try again in a minute.",
+		))
+	}
+
+	if ok, wait := h.allowToolCall(ctx, uid); !ok {
+		h.logger.Debugf("mcp tool %s for user %s rate limited, retry in %s", params.Name, uid, wait)
+		return h.toolFailure(msg.ID, uid, params.Name, newToolError(
+			"Too many Dropbox tool calls in a short time. "+waitHint(wait)+" before calling a tool again; do not retry immediately.",
+		))
+	}
+
 	started := time.Now()
 	tool, own := h.ownTool(params.Name)
 	if !own {

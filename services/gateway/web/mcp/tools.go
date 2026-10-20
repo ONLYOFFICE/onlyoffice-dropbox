@@ -33,14 +33,20 @@ import (
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
+	"github.com/sethvargo/go-limiter"
+	"github.com/sethvargo/go-limiter/memorystore"
 )
 
 const (
-	serverVersion = "1.0.0"
-	toolTimeout   = 20 * time.Second
-	proxyTimeout  = 90 * time.Second
+	serverVersion   = "1.0.0"
+	toolTimeout     = 20 * time.Second
+	proxyTimeout    = 90 * time.Second
+	upstreamTimeout = proxyTimeout - 5*time.Second
 
 	OpenToolName = "open_in_onlyoffice"
+
+	toolCallBurst    = 20
+	toolCallInterval = 2 * time.Second
 
 	serverInstructions = "The user's Dropbox, connected through ONLYOFFICE. All Dropbox tools are available " +
 		"(search, list, read, organize, share). To open a Dropbox file for viewing or editing, call " + OpenToolName +
@@ -57,6 +63,7 @@ type Handler struct {
 	onlyoffice    *shared.OnlyofficeConfig
 	logger        log.Logger
 	upstream      *upstream
+	limiter       limiter.Store
 	tools         []Tool
 }
 
@@ -160,16 +167,19 @@ func (h Handler) listTools(ctx context.Context, uid string) []any {
 		tools = append(tools, t)
 	}
 
-	token, err := h.accessToken(ctx, uid)
-	if err != nil {
+	var upstreamTools []json.RawMessage
+	if authUnavailable(ctx) {
+		upstreamTools = h.upstream.CachedTools()
+	} else if token, err := h.accessToken(ctx, uid); err != nil {
 		h.logger.Warnf("could not list dropbox mcp tools for user %s: %s", uid, err.Error())
-		return tools
-	}
-
-	upstreamTools, err := h.upstream.ListTools(ctx, token)
-	if err != nil {
-		h.logger.Warnf("could not list dropbox mcp tools for user %s: %s", uid, err.Error())
-		return tools
+		upstreamTools = h.upstream.CachedTools()
+	} else {
+		var err error
+		upstreamTools, err = h.upstream.ListTools(ctx, token)
+		if err != nil {
+			h.logger.Warnf("could not refresh dropbox mcp tools for user %s, serving %d cached: %s",
+				uid, len(upstreamTools), err.Error())
+		}
 	}
 
 	for _, raw := range upstreamTools {
@@ -191,6 +201,28 @@ func (h Handler) listTools(ctx context.Context, uid string) []any {
 	return tools
 }
 
+func waitHint(d time.Duration) string {
+	if d <= 0 {
+		return "Wait a little"
+	}
+
+	return fmt.Sprintf("Wait %d seconds", int((d+time.Second-1)/time.Second))
+}
+
+func (h Handler) allowToolCall(ctx context.Context, uid string) (bool, time.Duration) {
+	_, _, reset, ok, err := h.limiter.Take(ctx, uid)
+	if err != nil {
+		h.logger.Warnf("mcp tool call limiter failed for user %s: %s", uid, err.Error())
+		return true, 0
+	}
+
+	if ok {
+		return true, 0
+	}
+
+	return false, time.Until(time.Unix(0, int64(reset)))
+}
+
 func (h Handler) proxyCall(ctx context.Context, uid, name string, args json.RawMessage) (json.RawMessage, error) {
 	token, err := h.accessToken(ctx, uid)
 	if err != nil {
@@ -198,8 +230,17 @@ func (h Handler) proxyCall(ctx context.Context, uid, name string, args json.RawM
 	}
 
 	result, err := h.upstream.CallTool(ctx, token, name, args)
-	if errors.Is(err, ErrUpstreamUnauthorized) {
+
+	var limited *UpstreamRateLimitedError
+	switch {
+	case errors.Is(err, ErrUpstreamUnauthorized):
 		return nil, newToolError("Dropbox rejected ONLYOFFICE's access for this tool. " + h.reconnectHint())
+	case errors.As(err, &limited):
+		return nil, newToolError("Dropbox is rate limiting requests for this account. " + waitHint(limited.RetryAfter) +
+			" before calling Dropbox tools again; do not retry immediately.")
+	case errors.Is(err, ErrUpstreamUnavailable):
+		h.logger.Warnf("dropbox mcp unavailable for tool %s: %s", name, err.Error())
+		return nil, newToolError("Dropbox is unavailable right now. Try again later.")
 	}
 
 	return result, err
@@ -300,16 +341,28 @@ func NewHandler(
 	formatManager format.FormatManager,
 	onlyoffice *shared.OnlyofficeConfig,
 	logger log.Logger,
-) Handler {
+) (Handler, error) {
+	store, err := memorystore.New(&memorystore.Config{
+		Tokens:   toolCallBurst,
+		Interval: toolCallInterval,
+	})
+	if err != nil {
+		return Handler{}, fmt.Errorf("could not create the mcp tool call limiter: %w", err)
+	}
+
 	h := Handler{
 		users:         users,
 		api:           api,
 		formatManager: formatManager,
 		onlyoffice:    onlyoffice,
 		logger:        logger,
-		upstream:      newUpstream(DropboxMCPURL, &http.Client{Timeout: proxyTimeout}),
+		upstream: newUpstream(DropboxMCPURL, &http.Client{
+			Timeout:   upstreamTimeout,
+			Transport: newUpstreamTransport(),
+		}),
+		limiter: store,
 	}
 
 	h.tools = h.buildTools()
-	return h
+	return h, nil
 }

@@ -21,7 +21,6 @@ package adapter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
@@ -67,7 +66,7 @@ func (m *memoryUserAdapter) SelectUser(ctx context.Context, uid string) (domain.
 	var user domain.UserAccess
 
 	if !ok {
-		return user, errors.New("user with this id doesn't exist")
+		return user, fmt.Errorf("user with this id doesn't exist: %w", domain.ErrUserNotFound)
 	}
 
 	if err := json.Unmarshal(buffer, &user); err != nil {
@@ -101,7 +100,7 @@ func (m *memoryUserAdapter) IncrementKeyVersion(ctx context.Context, uid string)
 
 func (m *memoryUserAdapter) DeleteUser(ctx context.Context, uid string) error {
 	if _, ok := m.kvs[uid]; !ok {
-		return errors.New("user with this id doesn't exist")
+		return fmt.Errorf("user with this id doesn't exist: %w", domain.ErrUserNotFound)
 	}
 
 	delete(m.kvs, uid)

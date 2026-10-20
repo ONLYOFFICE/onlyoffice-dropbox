@@ -119,6 +119,10 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 	user := &userAccessCollection{}
 	collection := mgm.Coll(user)
 	if err := collection.FirstWithCtx(ctx, bson.M{"uid": uid}, user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return domain.UserAccess{}, fmt.Errorf("could not find a mongo user: %w", domain.ErrUserNotFound)
+		}
+
 		return domain.UserAccess{}, fmt.Errorf("could not find a mongo user: %w", err)
 	}
 
@@ -154,6 +158,10 @@ func (m *mongoUserAdapter) IncrementKeyVersion(ctx context.Context, uid string) 
 		bson.M{"$inc": bson.M{"key_version": 1}},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	).Decode(user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, fmt.Errorf("could not increment mongo user key version: %w", domain.ErrUserNotFound)
+		}
+
 		return 0, fmt.Errorf("could not increment mongo user key version: %w", err)
 	}
 

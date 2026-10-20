@@ -20,10 +20,13 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/port"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
+	merrors "go-micro.dev/v4/errors"
 )
 
 type UserKeyHandler struct {
@@ -49,6 +52,10 @@ func (k UserKeyHandler) RotateKey(ctx context.Context, uid *string, res *int) er
 
 		return version, nil
 	})
+
+	if errors.Is(err, domain.ErrUserNotFound) {
+		return merrors.NotFound("auth", "user %s not found", *uid)
+	}
 
 	if err != nil {
 		return fmt.Errorf("key rotation error: %w", err)
