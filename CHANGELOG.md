@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.2.3
+## Changed
+- enabled plugins
+
 ## 1.2.2
 ## Changed
 - fix ttl issue
