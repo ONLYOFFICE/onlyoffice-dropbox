@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -279,7 +280,7 @@ func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 
 		user, file, downloadLink, fetchErr := c.fetchDropboxData(ctx, ures.AccessToken, fileID)
 		if fetchErr != nil {
-			if downloadLink.Link == "" {
+			if errors.Is(fetchErr, aclient.ErrEmailNotVerified) {
 				loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
 				if err := embeddable.EmailPage.Execute(rw, map[string]interface{}{
 					"titleText": loc.MustLocalize(&i18n.LocalizeConfig{

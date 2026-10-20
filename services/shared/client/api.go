@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
@@ -47,7 +48,23 @@ const (
 	GetDownloadLink
 )
 
-var ErrInvalidResponsePayload = errors.New("invalid response payload")
+var (
+	ErrInvalidResponsePayload = errors.New("invalid response payload")
+	ErrEmailNotVerified       = errors.New("dropbox account email is not verified")
+)
+
+type dropboxErrorResponse struct {
+	ErrorSummary string `json:"error_summary"`
+}
+
+func checkEmailVerified(resp *resty.Response, apiErr *dropboxErrorResponse) error {
+	if resp != nil && resp.StatusCode() == http.StatusConflict &&
+		strings.HasPrefix(apiErr.ErrorSummary, "email_not_verified") {
+		return ErrEmailNotVerified
+	}
+
+	return nil
+}
 
 func newOtelClient(timeout time.Duration) *http.Client {
 	return &http.Client{
@@ -274,7 +291,8 @@ func (c DropboxClient) getDownloadLinkStandard(
 	res response.DropboxDownloadResponse,
 	_ string,
 ) (response.DropboxDownloadResponse, error) {
-	if _, err := c.client.R().
+	var apiErr dropboxErrorResponse
+	resp, err := c.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
@@ -282,8 +300,14 @@ func (c DropboxClient) getDownloadLinkStandard(
 		}).
 		SetAuthToken(token).
 		SetResult(&res).
-		Post("https://api.dropboxapi.com/2/files/get_temporary_link"); err != nil {
+		SetError(&apiErr).
+		Post("https://api.dropboxapi.com/2/files/get_temporary_link")
+	if err != nil {
 		return res, fmt.Errorf("could not get dropbox temporary link: %w", err)
+	}
+
+	if err := checkEmailVerified(resp, &apiErr); err != nil {
+		return res, err
 	}
 
 	if res.Link == "" {
@@ -309,7 +333,8 @@ func (c DropboxClient) getDownloadLinkTeam(
 		return res, err
 	}
 
-	if _, err := c.client.R().
+	var apiErr dropboxErrorResponse
+	resp, err := c.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
@@ -318,8 +343,14 @@ func (c DropboxClient) getDownloadLinkTeam(
 		SetAuthToken(token).
 		SetHeader("Dropbox-API-Path-Root", pathRootHeader).
 		SetResult(&res).
-		Post("https://api.dropboxapi.com/2/files/get_temporary_link"); err != nil {
+		SetError(&apiErr).
+		Post("https://api.dropboxapi.com/2/files/get_temporary_link")
+	if err != nil {
 		return res, fmt.Errorf("could not get dropbox temporary link: %w", err)
+	}
+
+	if err := checkEmailVerified(resp, &apiErr); err != nil {
+		return res, err
 	}
 
 	if res.Link == "" {
