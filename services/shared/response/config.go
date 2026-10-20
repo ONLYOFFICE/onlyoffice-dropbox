@@ -77,7 +77,7 @@ type User struct {
 
 type Customization struct {
 	Goback        Goback `json:"goback"`
-	Plugins       bool   `json:"plugins,omitempty"`
+	Plugins       *bool  `json:"plugins,omitempty"`
 	HideRightMenu bool   `json:"hideRightMenu"`
 }
 
