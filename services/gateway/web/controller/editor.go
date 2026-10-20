@@ -181,7 +181,7 @@ func (c *EditorController) prepareDocumentConfig(
 				Goback: response.Goback{
 					RequestClose: false,
 				},
-				Plugins:       false,
+				Plugins:       true,
 				HideRightMenu: false,
 			},
 			Lang: user.Locale,
