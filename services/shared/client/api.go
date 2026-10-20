@@ -204,6 +204,10 @@ func (c DropboxClient) getFileTeam(
 		return res, err
 	}
 
+	if res.ID == "" {
+		return res, ErrInvalidResponsePayload
+	}
+
 	return res, nil
 }
 
@@ -316,6 +320,10 @@ func (c DropboxClient) getDownloadLinkTeam(
 		SetResult(&res).
 		Post("https://api.dropboxapi.com/2/files/get_temporary_link"); err != nil {
 		return res, fmt.Errorf("could not get dropbox temporary link: %w", err)
+	}
+
+	if res.Link == "" {
+		return res, ErrInvalidResponsePayload
 	}
 
 	return res, nil
