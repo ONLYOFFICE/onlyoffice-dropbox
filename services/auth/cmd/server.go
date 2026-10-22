@@ -53,8 +53,7 @@ func Server() *cli.Command {
 					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					adapter.BuildNewUserAdapter, service.NewUserService,
 					handler.NewUserSelectHandler, handler.NewUserDeleteHandler,
-					handler.NewUserInsertHandler, handler.NewUserKeyHandler,
-					rpc.NewService, web.NewAuthRPCServer,
+					handler.NewUserInsertHandler, rpc.NewService, web.NewAuthRPCServer,
 				),
 			).Bootstrap()
 
