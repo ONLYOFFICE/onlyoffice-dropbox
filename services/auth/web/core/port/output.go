@@ -29,5 +29,4 @@ type UserAccessServiceAdapter interface {
 	SelectUser(ctx context.Context, uid string) (domain.UserAccess, error)
 	UpsertUser(ctx context.Context, user domain.UserAccess) (domain.UserAccess, error)
 	DeleteUser(ctx context.Context, uid string) error
-	IncrementKeyVersion(ctx context.Context, uid string) (int, error)
 }
