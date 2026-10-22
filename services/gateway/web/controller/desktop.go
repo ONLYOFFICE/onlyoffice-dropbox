@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -32,6 +33,8 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 )
+
+const desktopPluginOrigin = "onlyoffice://plugin"
 
 type DesktopController struct {
 	client client.Client
@@ -103,6 +106,53 @@ func (c *DesktopController) BuildEntryPage() http.HandlerFunc {
 		}); err != nil {
 			c.logger.Errorf("could not execute desktop template: %s", err.Error())
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
+		}
+	}
+}
+
+// BuildGetToken hands ONLYOFFICE Desktop's AI agent the current Dropbox access
+// token of the signed-in user, so the agent can call Dropbox's MCP server
+// itself. The auth service refreshes the token before it expires.
+//
+// The plugin reads it with the session cookie, and a wildcard
+// Access-Control-Allow-Origin never exposes a response to a request with
+// credentials, so the plugin origin is allowed by name and every other origin
+// is denied.
+func (c *DesktopController) BuildGetToken() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		if r.Header.Get("Origin") == desktopPluginOrigin {
+			rw.Header().Set("Access-Control-Allow-Origin", desktopPluginOrigin)
+			rw.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			rw.Header().Del("Access-Control-Allow-Origin")
+			rw.Header().Del("Access-Control-Allow-Credentials")
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		uid := rw.Header().Get("X-User")
+		if uid == "" {
+			http.Error(rw, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		var ures response.UserResponse
+		if err := c.client.Call(ctx, c.client.NewRequest(
+			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
+			uid,
+		), &ures); err != nil {
+			c.logger.Errorf("could not get user %s access info: %s", uid, err.Error())
+			http.Error(rw, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		if err := json.NewEncoder(rw).Encode(map[string]string{
+			"access_token": ures.AccessToken,
+			"expires_at":   ures.Expiry,
+		}); err != nil {
+			c.logger.Errorf("could not encode the access token of user %s: %s", uid, err.Error())
 		}
 	}
 }

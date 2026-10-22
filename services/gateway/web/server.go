@@ -27,7 +27,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
-	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/mcp"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	shttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -43,11 +42,8 @@ type DropboxHTTPService struct {
 	convertController convert.ConvertController
 	historyController controller.HistoryController
 	desktopController controller.DesktopController
-	mcpController     controller.MCPController
-	mcpHandler        mcp.Handler
 	sessionMiddleware middleware.SessionMiddleware
 	desktopMiddleware middleware.DesktopMiddleware
-	mcpMiddleware     middleware.MCPMiddleware
 	credentials       *oauth2.Config
 }
 
@@ -58,11 +54,8 @@ func NewServer(
 	convertController convert.ConvertController,
 	historyController controller.HistoryController,
 	desktopController controller.DesktopController,
-	mcpController controller.MCPController,
-	mcpHandler mcp.Handler,
 	sessionMiddleware middleware.SessionMiddleware,
 	desktopMiddleware middleware.DesktopMiddleware,
-	mcpMiddleware middleware.MCPMiddleware,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
 	service := DropboxHTTPService{
@@ -72,11 +65,8 @@ func NewServer(
 		convertController: convertController,
 		historyController: historyController,
 		desktopController: desktopController,
-		mcpController:     mcpController,
-		mcpHandler:        mcpHandler,
 		sessionMiddleware: sessionMiddleware,
 		desktopMiddleware: desktopMiddleware,
-		mcpMiddleware:     mcpMiddleware,
 		credentials:       credentials,
 	}
 
@@ -123,21 +113,18 @@ func notFoundHandler() http.Handler {
 // InitializeRoutes builds all http routes.
 func (s *DropboxHTTPService) InitializeRoutes() {
 	s.mux.Use(chimiddleware.Recoverer, chimiddleware.NoCache,
-		middleware.SkipCSRF(csrf.Protect([]byte(s.credentials.ClientSecret)), "/mcp"))
+		csrf.Protect([]byte(s.credentials.ClientSecret)))
 
 	sizeMiddleware := middleware.MaxPayloadSizeMiddleware(1 * 1024 * 1024)
 	root := s.mux.NewRoute().PathPrefix("/").Subrouter()
 	root.Use(s.sessionMiddleware.Protect, sizeMiddleware)
 	root.Handle("/editor", s.editorController.BuildEditorPage()).Methods(http.MethodGet)
 	root.Handle("/convert", s.convertController.BuildConvertPage()).Methods(http.MethodGet)
-	root.Handle("/mcp/key", s.mcpController.BuildGetKey()).Methods(http.MethodGet)
-	root.Handle("/mcp/key/revoke", s.mcpController.BuildRevokeKey()).Methods(http.MethodPost)
-
-	s.mux.Handle("/mcp", s.mcpMiddleware.Authenticate(s.mcpHandler))
 
 	desktop := s.mux.NewRoute().PathPrefix("/app").Subrouter().StrictSlash(true)
 	desktop.Use(s.desktopMiddleware.RequireDesktop, s.sessionMiddleware.Protect, sizeMiddleware)
 	desktop.Handle("/", s.desktopController.BuildEntryPage()).Methods(http.MethodGet)
+	desktop.Handle("/token", s.desktopController.BuildGetToken()).Methods(http.MethodGet)
 
 	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter().StrictSlash(true)
 	auth.Handle("/install", s.authController.BuildGetAuth()).Methods(http.MethodGet)
