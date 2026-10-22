@@ -108,16 +108,3 @@ func (r *DropboxFileVersionsResponse) SortEntries() {
 type DropboxDownloadResponse struct {
 	Link string `json:"link"`
 }
-
-type DropboxMetadata struct {
-	Tag         string `json:".tag"`
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	PathDisplay string `json:"path_display"`
-	SModified   string `json:"server_modified,omitempty"`
-	Size        int64  `json:"size,omitempty"`
-}
-
-type DropboxErrorResponse struct {
-	ErrorSummary string `json:"error_summary"`
-}

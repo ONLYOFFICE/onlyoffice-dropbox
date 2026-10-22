@@ -29,7 +29,6 @@ type UserResponse struct {
 	TokenType    string `json:"token_type" mapstructure:"token_type"`
 	Scope        string `json:"scope" mapstructure:"scope"`
 	Expiry       string `json:"expiry" mapstructure:"expiry"`
-	KeyVersion   int    `json:"key_version" mapstructure:"key_version"`
 }
 
 func (ur UserResponse) ToJSON() []byte {

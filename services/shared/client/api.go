@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
@@ -66,23 +65,8 @@ func newOtelClient(timeout time.Duration) *http.Client {
 
 var otelHttpClient = newOtelClient(10 * time.Second)
 
-type DropboxAPIError struct {
-	Status     int
-	Summary    string
-	RetryAfter time.Duration
-}
-
-func (e *DropboxAPIError) Error() string {
-	if e.Summary == "" {
-		return fmt.Sprintf("dropbox request failed with status %d", e.Status)
-	}
-
-	return fmt.Sprintf("dropbox request failed with status %d: %s", e.Status, e.Summary)
-}
-
 type DropboxClient struct {
 	client      *resty.Client
-	direct      *resty.Client
 	cache       cache.Cache
 	credentials *oauth2.Config
 }
@@ -104,12 +88,6 @@ func NewDropboxAuthClient(
 			AddRetryCondition(func(r *resty.Response, err error) bool {
 				return r.StatusCode() == http.StatusTooManyRequests
 			}),
-		direct: resty.NewWithClient(otelHttpClient).
-			SetRedirectPolicy(resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			})).
-			SetTimeout(10 * time.Second).
-			SetLogger(log.NewEmptyLogger()),
 		cache:       cache,
 		credentials: credentials,
 	}
@@ -598,70 +576,4 @@ func (c DropboxClient) SaveFileFromURL(ctx context.Context, path, url, token str
 	}
 
 	return nil
-}
-
-func (c DropboxClient) post(
-	ctx context.Context,
-	url, token, pathRoot string,
-	body, result any,
-) error {
-	req := c.direct.R().
-		SetContext(ctx).
-		SetHeader("Content-Type", "application/json").
-		SetBody(body).
-		SetAuthToken(token).
-		SetResult(result).
-		SetError(&response.DropboxErrorResponse{})
-	if pathRoot != "" {
-		req.SetHeader("Dropbox-API-Path-Root", pathRoot)
-	}
-
-	resp, err := req.Post(url)
-	if err != nil {
-		return err
-	}
-
-	if resp.IsError() {
-		apiErr := &DropboxAPIError{Status: resp.StatusCode()}
-		if res, ok := resp.Error().(*response.DropboxErrorResponse); ok {
-			apiErr.Summary = res.ErrorSummary
-		}
-
-		if seconds, err := strconv.Atoi(resp.Header().Get("Retry-After")); err == nil && seconds > 0 {
-			apiErr.RetryAfter = time.Duration(seconds) * time.Second
-		}
-
-		return apiErr
-	}
-
-	return nil
-}
-
-func (c DropboxClient) rootPost(ctx context.Context, url, token string, body, result any) error {
-	userRes, err := c.getUser(ctx, token)
-	if err == nil && c.isTeamAccount(userRes) {
-		if pathRoot, herr := c.buildTeamHeader(userRes.RootInfo.RootNamespaceID); herr == nil {
-			if terr := c.post(ctx, url, token, pathRoot, body, result); terr == nil {
-				return nil
-			}
-		}
-	}
-
-	return c.post(ctx, url, token, "", body, result)
-}
-
-func (c DropboxClient) GetMetadata(ctx context.Context, path, token string) (response.DropboxMetadata, error) {
-	var res response.DropboxMetadata
-	if err := c.rootPost(ctx, "https://api.dropboxapi.com/2/files/get_metadata", token, map[string]any{
-		"path":            path,
-		"include_deleted": false,
-	}, &res); err != nil {
-		return res, fmt.Errorf("could not get dropbox metadata: %w", err)
-	}
-
-	if res.ID == "" {
-		return res, ErrInvalidResponsePayload
-	}
-
-	return res, nil
 }

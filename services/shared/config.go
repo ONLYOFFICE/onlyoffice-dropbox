@@ -21,7 +21,6 @@ package shared
 import (
 	"context"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/sethvargo/go-envconfig"
@@ -158,65 +157,4 @@ type OnlyofficeCallbackConfig struct {
 
 func (c *OnlyofficeCallbackConfig) Validate() error {
 	return nil
-}
-
-const minMCPKeySecretLength = 32
-
-type MCPConfig struct {
-	MCP struct {
-		KeySecret         string `yaml:"key_secret" env:"MCP_KEY_SECRET,overwrite"`
-		PreviousKeySecret string `yaml:"previous_key_secret" env:"MCP_PREVIOUS_KEY_SECRET,overwrite"`
-	} `yaml:"mcp"`
-}
-
-func (mc *MCPConfig) Validate() error {
-	mc.MCP.KeySecret = strings.TrimSpace(mc.MCP.KeySecret)
-	mc.MCP.PreviousKeySecret = strings.TrimSpace(mc.MCP.PreviousKeySecret)
-
-	if len(mc.MCP.KeySecret) < minMCPKeySecretLength {
-		return &InvalidConfigurationParameterError{
-			Parameter: "MCP Key Secret",
-			Reason:    "Should be a random value of at least 32 characters (e.g. openssl rand -base64 48)",
-		}
-	}
-
-	if mc.MCP.PreviousKeySecret != "" && len(mc.MCP.PreviousKeySecret) < minMCPKeySecretLength {
-		return &InvalidConfigurationParameterError{
-			Parameter: "MCP Previous Key Secret",
-			Reason:    "Should be empty or at least 32 characters",
-		}
-	}
-
-	if mc.MCP.PreviousKeySecret == mc.MCP.KeySecret {
-		mc.MCP.PreviousKeySecret = ""
-	}
-
-	return nil
-}
-
-func BuildNewMCPConfig(path string) func() (*MCPConfig, error) {
-	return func() (*MCPConfig, error) {
-		var config MCPConfig
-		if path != "" {
-			file, err := os.Open(path)
-			if err != nil {
-				return nil, err
-			}
-			defer file.Close()
-
-			decoder := yaml.NewDecoder(file)
-
-			if err := decoder.Decode(&config); err != nil {
-				return nil, err
-			}
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-		defer cancel()
-		if err := envconfig.Process(ctx, &config); err != nil {
-			return nil, err
-		}
-
-		return &config, config.Validate()
-	}
 }
