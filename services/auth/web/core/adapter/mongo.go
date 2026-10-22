@@ -45,7 +45,6 @@ type userAccessCollection struct {
 	TokenType        string `json:"token_type"`
 	Scope            string `json:"scope"`
 	Expiry           string `json:"expiry"`
-	KeyVersion       int    `json:"key_version" bson:"key_version"`
 }
 
 type mongoUserAdapter struct {
@@ -119,10 +118,6 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 	user := &userAccessCollection{}
 	collection := mgm.Coll(user)
 	if err := collection.FirstWithCtx(ctx, bson.M{"uid": uid}, user); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return domain.UserAccess{}, fmt.Errorf("could not find a mongo user: %w", domain.ErrUserNotFound)
-		}
-
 		return domain.UserAccess{}, fmt.Errorf("could not find a mongo user: %w", err)
 	}
 
@@ -133,7 +128,6 @@ func (m *mongoUserAdapter) SelectUser(ctx context.Context, uid string) (domain.U
 		TokenType:    user.TokenType,
 		Scope:        user.Scope,
 		Expiry:       user.Expiry,
-		KeyVersion:   user.KeyVersion,
 	}, nil
 }
 
@@ -143,29 +137,6 @@ func (m *mongoUserAdapter) UpsertUser(ctx context.Context, user domain.UserAcces
 	}
 
 	return user, m.save(ctx, user)
-}
-
-func (m *mongoUserAdapter) IncrementKeyVersion(ctx context.Context, uid string) (int, error) {
-	uid = strings.TrimSpace(uid)
-	if uid == "" {
-		return 0, errInvalidUserId
-	}
-
-	user := &userAccessCollection{}
-	if err := mgm.Coll(user).FindOneAndUpdate(
-		ctx,
-		bson.M{"uid": uid},
-		bson.M{"$inc": bson.M{"key_version": 1}},
-		options.FindOneAndUpdate().SetReturnDocument(options.After),
-	).Decode(user); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return 0, fmt.Errorf("could not increment mongo user key version: %w", domain.ErrUserNotFound)
-		}
-
-		return 0, fmt.Errorf("could not increment mongo user key version: %w", err)
-	}
-
-	return user.KeyVersion, nil
 }
 
 func (m *mongoUserAdapter) DeleteUser(ctx context.Context, uid string) error {
