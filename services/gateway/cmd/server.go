@@ -24,7 +24,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/controller/convert"
-	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/mcp"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
@@ -57,19 +56,13 @@ func Server() *cli.Command {
 					crypto.NewStateGenerator,
 					shared.BuildNewIntegrationCredentialsConfig(configPath),
 					shared.BuildNewOnlyofficeConfig(configPath),
-					shared.BuildNewMCPConfig(configPath),
 					controller.NewAuthController,
 					controller.NewEditorController,
 					convert.NewConvertController,
 					controller.NewHistoryController,
 					controller.NewDesktopController,
-					controller.NewMCPController,
-					mcp.NewKeyManager,
-					mcp.NewUserStore,
-					mcp.NewHandler,
 					middleware.NewSessionMiddleware,
 					middleware.NewDesktopMiddleware,
-					middleware.NewMCPMiddleware,
 					chttp.NewService, web.NewServer,
 					client.NewDropboxAuthClient,
 					format.NewMapFormatManager,
