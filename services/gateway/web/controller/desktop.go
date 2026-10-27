@@ -34,6 +34,7 @@ import (
 	"go-micro.dev/v4/client"
 )
 
+const aiInterfaceVersion = 1
 const desktopPluginOrigin = "onlyoffice://plugin"
 
 type DesktopController struct {
@@ -55,6 +56,21 @@ func NewDesktopController(
 		server: server,
 		logger: logger,
 	}
+}
+
+// allowDesktopPlugin lets ONLYOFFICE Desktop's plugins read a response sent to
+// their session cookie. A wildcard Access-Control-Allow-Origin never exposes a
+// response to a request with credentials, so the plugin origin is allowed by
+// name and every other origin is denied.
+func allowDesktopPlugin(rw http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Origin") == desktopPluginOrigin {
+		rw.Header().Set("Access-Control-Allow-Origin", desktopPluginOrigin)
+		rw.Header().Set("Access-Control-Allow-Credentials", "true")
+		return
+	}
+
+	rw.Header().Del("Access-Control-Allow-Origin")
+	rw.Header().Del("Access-Control-Allow-Credentials")
 }
 
 func (c *DesktopController) BuildEntryPage() http.HandlerFunc {
@@ -110,26 +126,31 @@ func (c *DesktopController) BuildEntryPage() http.HandlerFunc {
 	}
 }
 
+// BuildGetCapabilities tells ONLYOFFICE Desktop's AI agent that this
+// integration supports its cloud interface: the agent lists a signed-in cloud
+// in the chat only when its gateway answers here with the provider it expects.
+func (c *DesktopController) BuildGetCapabilities() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		allowDesktopPlugin(rw, r)
+		rw.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(rw).Encode(map[string]any{
+			"provider": "dropbox",
+			"version":  aiInterfaceVersion,
+		}); err != nil {
+			c.logger.Errorf("could not encode the AI capabilities: %s", err.Error())
+		}
+	}
+}
+
 // BuildGetToken hands ONLYOFFICE Desktop's AI agent the current Dropbox access
 // token of the signed-in user, so the agent can call Dropbox's MCP server
 // itself. The auth service refreshes the token before it expires.
-//
-// The plugin reads it with the session cookie, and a wildcard
-// Access-Control-Allow-Origin never exposes a response to a request with
-// credentials, so the plugin origin is allowed by name and every other origin
-// is denied.
 func (c *DesktopController) BuildGetToken() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		if r.Header.Get("Origin") == desktopPluginOrigin {
-			rw.Header().Set("Access-Control-Allow-Origin", desktopPluginOrigin)
-			rw.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			rw.Header().Del("Access-Control-Allow-Origin")
-			rw.Header().Del("Access-Control-Allow-Credentials")
-		}
+		allowDesktopPlugin(rw, r)
 
 		rw.Header().Set("Content-Type", "application/json")
 		uid := rw.Header().Get("X-User")

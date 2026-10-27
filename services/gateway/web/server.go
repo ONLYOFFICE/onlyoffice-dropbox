@@ -125,6 +125,7 @@ func (s *DropboxHTTPService) InitializeRoutes() {
 	desktop.Use(s.desktopMiddleware.RequireDesktop, s.sessionMiddleware.Protect, sizeMiddleware)
 	desktop.Handle("/", s.desktopController.BuildEntryPage()).Methods(http.MethodGet)
 	desktop.Handle("/token", s.desktopController.BuildGetToken()).Methods(http.MethodGet)
+	desktop.Handle("/ai", s.desktopController.BuildGetCapabilities()).Methods(http.MethodGet)
 
 	auth := s.mux.NewRoute().PathPrefix("/oauth").Subrouter().StrictSlash(true)
 	auth.Handle("/install", s.authController.BuildGetAuth()).Methods(http.MethodGet)
