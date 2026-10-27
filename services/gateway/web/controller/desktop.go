@@ -23,9 +23,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
@@ -75,11 +75,11 @@ func allowDesktopPlugin(rw http.ResponseWriter, r *http.Request) {
 
 func (c *DesktopController) BuildEntryPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), userCallTimeout)
 		defer cancel()
 
 		rw.Header().Set("Content-Type", "text/html")
-		uid := rw.Header().Get("X-User")
+		uid := middleware.UserID(r)
 		if uid == "" {
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
@@ -147,13 +147,13 @@ func (c *DesktopController) BuildGetCapabilities() http.HandlerFunc {
 // itself. The auth service refreshes the token before it expires.
 func (c *DesktopController) BuildGetToken() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), userCallTimeout)
 		defer cancel()
 
 		allowDesktopPlugin(rw, r)
 
 		rw.Header().Set("Content-Type", "application/json")
-		uid := rw.Header().Get("X-User")
+		uid := middleware.UserID(r)
 		if uid == "" {
 			http.Error(rw, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

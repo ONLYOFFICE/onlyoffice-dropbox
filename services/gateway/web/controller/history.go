@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
@@ -64,7 +65,7 @@ func NewHistoryController(
 }
 
 func (c HistoryController) getUserID(rw http.ResponseWriter, r *http.Request) (string, bool) {
-	uid := rw.Header().Get("X-User")
+	uid := middleware.UserID(r)
 	if uid == "" {
 		c.logger.Errorf("authorization context has no user id")
 		http.Error(rw, "Forbidden", http.StatusForbidden)
@@ -83,7 +84,7 @@ func (c HistoryController) fetchUser(ctx context.Context, uid string) (response.
 }
 
 func (c HistoryController) runWithTimeout(r *http.Request, rw http.ResponseWriter, fn func(ctx context.Context)) {
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), userCallTimeout)
 	defer cancel()
 	fn(ctx)
 }

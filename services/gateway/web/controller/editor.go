@@ -27,9 +27,11 @@ import (
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
@@ -161,6 +163,15 @@ func (c *EditorController) prepareDocumentConfig(
 	token jwt.MapClaims,
 	editorType string,
 ) (response.ConfigResponse, error) {
+	callbackState, err := c.jwtManager.Sign(
+		c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret,
+		request.CallbackState{FileID: file.ID},
+	)
+
+	if err != nil {
+		return response.ConfigResponse{}, err
+	}
+
 	config := response.ConfigResponse{
 		Document: response.Document{
 			Key:   string(c.hasher.Hash(file.ID + file.SModified)),
@@ -174,8 +185,8 @@ func (c *EditorController) prepareDocumentConfig(
 				Image: user.ProfilePicture,
 			},
 			CallbackURL: fmt.Sprintf(
-				"%s/callback?id=%s",
-				c.onlyoffice.Onlyoffice.Builder.CallbackURL, file.ID,
+				"%s/callback?state=%s",
+				c.onlyoffice.Onlyoffice.Builder.CallbackURL, callbackState,
 			),
 			Customization: response.Customization{
 				Goback: response.Goback{
@@ -228,11 +239,11 @@ func (c *EditorController) prepareDocumentConfig(
 
 func (c *EditorController) BuildEditorPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), userCallTimeout)
 		defer cancel()
 
 		rw.Header().Set("Content-Type", "text/html")
-		uid := rw.Header().Get("X-User")
+		uid := middleware.UserID(r)
 		if uid == "" {
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return

@@ -19,6 +19,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -29,6 +30,15 @@ import (
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 )
+
+type contextKey string
+
+const userIDKey contextKey = "user_id"
+
+func UserID(r *http.Request) string {
+	uid, _ := r.Context().Value(userIDKey).(string)
+	return uid
+}
 
 type SessionMiddleware struct {
 	jwtManager  crypto.JwtManager
@@ -94,7 +104,8 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 			return
 		}
 
-		if token["jti"] == "" {
+		uid, _ := token["jti"].(string)
+		if uid == "" {
 			session.Options.MaxAge = -1
 			if err := session.Save(r, rw); err != nil {
 				m.logger.Warnf("could not save a cookie session: %w", err)
@@ -105,7 +116,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		}
 
 		signature, _ := m.jwtManager.Sign(m.credentials.ClientSecret, jwt.RegisteredClaims{
-			ID:        token["jti"].(string),
+			ID:        uid,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(25 * time.Hour)),
 		})
 		session.Values["token"] = signature
@@ -116,8 +127,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 			m.logger.Debugf("refreshed current session: %s", signature)
 		}
 
-		rw.Header().Set("X-User", token["jti"].(string))
-		next.ServeHTTP(rw, r)
+		next.ServeHTTP(rw, r.WithContext(context.WithValue(r.Context(), userIDKey, uid)))
 	}
 
 	return http.HandlerFunc(fn)

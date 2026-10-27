@@ -113,7 +113,17 @@ func (c CallbackController) sendErrorResponse(errorText string, rw http.Response
 func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
-		fileID := strings.TrimSpace(r.URL.Query().Get("id"))
+		var state request.CallbackState
+		if err := c.jwtManger.Verify(
+			c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret, r.URL.Query().Get("state"), &state,
+		); err != nil {
+			c.logger.Errorf("invalid callback state: %s", err.Error())
+			rw.WriteHeader(http.StatusForbidden)
+			rw.Write(response.CallbackResponse{Error: 1}.ToJSON())
+			return
+		}
+
+		fileID := strings.TrimSpace(state.FileID)
 		if fileID == "" {
 			c.sendErrorResponse("file id is empty", rw)
 			return

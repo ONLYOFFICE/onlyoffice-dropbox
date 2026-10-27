@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/embeddable"
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/response"
 	"github.com/golang-jwt/jwt/v5"
@@ -53,17 +54,22 @@ func (c *ConvertController) getLocalizedMessages(loc *i18n.Localizer, messageIDs
 	return messages
 }
 
+// userCallTimeout bounds a request that reads a user from the auth service:
+// it may first refresh the user's Dropbox token and store it, and both take
+// seconds when Dropbox or the database is slow.
+const userCallTimeout = 15 * time.Second
+
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
 		fileID := r.URL.Query().Get("file_id")
-		uid := rw.Header().Get("X-User")
+		uid := middleware.UserID(r)
 		if uid == "" {
 			http.Redirect(rw, r, "/oauth/install", http.StatusMovedPermanently)
 			return
 		}
 
-		tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		tctx, cancel := context.WithTimeout(r.Context(), userCallTimeout)
 		defer cancel()
 		var ures response.UserResponse
 		if err := c.client.Call(tctx, c.client.NewRequest(

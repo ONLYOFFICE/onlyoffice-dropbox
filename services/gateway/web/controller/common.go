@@ -20,6 +20,7 @@ package controller
 
 import (
 	"errors"
+	"time"
 
 	"golang.org/x/sync/singleflight"
 )
@@ -32,3 +33,5 @@ var (
 	ErrInvalidVerifierValue = errors.New("invalid verifier value")
 	group                   singleflight.Group
 )
+
+const userCallTimeout = 15 * time.Second

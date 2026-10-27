@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared"
 	aclient "github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/client"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/shared/format"
@@ -254,7 +255,7 @@ func (c ConvertController) convertFile(ctx context.Context, uid string, aRequest
 
 func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		uid := rw.Header().Get("X-User")
+		uid := middleware.UserID(r)
 		if uid == "" {
 			c.logger.Errorf("authorization context has no user id")
 			rw.WriteHeader(http.StatusForbidden)
