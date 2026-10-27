@@ -50,6 +50,21 @@ type AuthController struct {
 	logger         log.Logger
 }
 
+func scopeParam(scopes []string) string {
+	var named []string
+	for _, scope := range scopes {
+		if scope = strings.TrimSpace(scope); scope != "" {
+			named = append(named, scope)
+		}
+	}
+
+	if len(named) == 0 {
+		return ""
+	}
+
+	return "&scope=" + url.QueryEscape(strings.Join(named, " "))
+}
+
 func NewAuthController(
 	client client.Client,
 	api aclient.DropboxClient,
@@ -111,7 +126,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 		http.Redirect(
 			rw, r,
 			fmt.Sprintf(
-				"https://dropbox.com/oauth2/authorize?response_type=%s&client_id=%s&redirect_uri=%s&token_access_type=%s&state=%s&code_challenge=%s&code_challenge_method=%s&force_reapprove=true&disable_signup=true&include_granted_scopes=user",
+				"https://dropbox.com/oauth2/authorize?response_type=%s&client_id=%s&redirect_uri=%s&token_access_type=%s&state=%s&code_challenge=%s&code_challenge_method=%s&force_reapprove=true&disable_signup=true%s",
 				"code",
 				c.oauth.ClientID,
 				url.QueryEscape(c.oauth.RedirectURL),
@@ -119,6 +134,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 				url.QueryEscape(state),
 				v.CodeChallengeS256(),
 				"S256",
+				scopeParam(c.oauth.Scopes),
 			),
 			http.StatusMovedPermanently,
 		)
