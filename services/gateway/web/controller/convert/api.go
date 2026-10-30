@@ -39,7 +39,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"

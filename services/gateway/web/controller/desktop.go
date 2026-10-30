@@ -30,7 +30,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 )
 
 type DesktopController struct {

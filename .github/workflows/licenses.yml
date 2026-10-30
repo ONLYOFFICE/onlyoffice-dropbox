@@ -11,17 +11,14 @@ jobs:
   licences:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-      - name: Submodule Update
-        run: |
-          cd ${{ github.workspace }}
-          cwd=$(pwd)
-          git submodule update --init --recursive
+          go-version-file: go.mod
       - name: Get Repository License
         id: license
         run: |

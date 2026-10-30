@@ -35,7 +35,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	cv "github.com/nirasan/go-oauth-pkce-code-verifier"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 	"golang.org/x/oauth2"
 )
 
@@ -81,7 +81,7 @@ func (c AuthController) getRedirectURL(rw http.ResponseWriter, r *http.Request) 
 
 	session.Options.MaxAge = -1
 	if err := session.Save(r, rw); err != nil {
-		c.logger.Warnf("could not save a cookie session: %w", err)
+		c.logger.Warnf("could not save a cookie session: %v", err)
 	}
 
 	return url
@@ -149,7 +149,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		if err != nil {
 			c.logger.Debugf("could not get session store: %s", err.Error())
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}
@@ -186,7 +186,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		t, ok := token.(*oauth2.Token)
 		if err != nil || !ok {
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}
@@ -194,7 +194,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		usr, err := c.api.GetUser(ctx, t.AccessToken)
 		if err != nil {
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}
@@ -215,7 +215,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		), &resp, client.WithRetries(3)); err != nil {
 			c.logger.Errorf("could not insert a new user: %s", err.Error())
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}
@@ -230,7 +230,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		if err != nil {
 			c.logger.Errorf("could not issue a new jwt: %s", err.Error())
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}
@@ -240,7 +240,7 @@ func (c AuthController) BuildGetRedirect() http.HandlerFunc {
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Errorf("could not save current session: %s", err.Error())
 			if err := embeddable.InstallationErrorPage.Execute(rw, errMsg); err != nil {
-				c.logger.Errorf("could not execute an installation error template: %w", err)
+				c.logger.Errorf("could not execute an installation error template: %v", err)
 			}
 			return
 		}

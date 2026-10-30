@@ -24,7 +24,7 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/port"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"go-micro.dev/v4/client"
+	"go-micro.dev/v5/client"
 )
 
 type UserDeleteHandler struct {

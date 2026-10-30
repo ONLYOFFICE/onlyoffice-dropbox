@@ -39,7 +39,7 @@ func (c *ConvertController) renderErrorPage(rw http.ResponseWriter) {
 		"errorSubtext": "Please try again",
 		"reloadButton": "Reload",
 	}); err != nil {
-		c.logger.Errorf("could not execute an error template: %w", err)
+		c.logger.Errorf("could not execute an error template: %v", err)
 	}
 }
 
@@ -156,7 +156,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		if err := embeddable.ConvertPage.Execute(rw, data); err != nil {
-			c.logger.Errorf("could not execute a convert template: %w", err)
+			c.logger.Errorf("could not execute a convert template: %v", err)
 		}
 	}
 }

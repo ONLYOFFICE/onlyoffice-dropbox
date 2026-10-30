@@ -26,7 +26,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-dropbox/services/auth/web/core/domain"
 	"github.com/stretchr/testify/assert"
-	"go-micro.dev/v4/logger"
+	"go-micro.dev/v5/logger"
 )
 
 var user = domain.UserAccess{
