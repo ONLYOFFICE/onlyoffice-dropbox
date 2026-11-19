@@ -21,7 +21,7 @@ package embeddable
 import (
 	"embed"
 	"encoding/json"
-	"text/template"
+	"html/template"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"

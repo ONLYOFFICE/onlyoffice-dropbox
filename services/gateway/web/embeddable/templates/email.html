@@ -23,8 +23,13 @@
     <title>ONLYOFFICE</title>
     <link href="https://fonts.cdnfonts.com/css/lato" rel="stylesheet" />
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
-  </head>
   <style>
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #333333;
+    }
+
     .container {
       position: absolute;
       top: 0;
@@ -35,6 +40,7 @@
       justify-content: center;
       align-items: center;
       flex-direction: column;
+      background: #fff;
     }
 
     .container_title {
@@ -44,7 +50,7 @@
       font-size: 20px;
       font-weight: 700;
       line-height: 28px;
-      color: #4e4e4e;
+      color: #333333;
     }
 
     .container_subtitle {
@@ -70,7 +76,27 @@
       text-align: center;
       color: #a4a4a4;
     }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #1A1918;
+        color: #f0f0f0;
+      }
+
+      .container {
+        background: #1c1c1c;
+      }
+
+      .container_title {
+        color: #f0f0f0;
+      }
+
+      .container_footnote {
+        color: #a0a0a0;
+      }
+    }
   </style>
+  </head>
   <body>
     <div class="container">
       <div>
@@ -99,7 +125,7 @@
       <div class="container_title">{{ .titleText }}</div>
       <span class="container_subtitle"
         >{{ .subtitleTextOne }}
-        <span class="container_subtitle_file">{{ .file }}</span>{{ .sutitleTextTwo }}</span
+        <span class="container_subtitle_file">{{ .file }}</span>{{ .subtitleTextTwo }}</span
       >
       <span class="container_footnote">{{ .footnote }}</span>
     </div>
